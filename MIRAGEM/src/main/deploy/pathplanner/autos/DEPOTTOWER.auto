@@ -1,0 +1,43 @@
+{
+  "version": "2025.0",
+  "command": {
+    "type": "sequential",
+    "data": {
+      "commands": [
+        {
+          "type": "named",
+          "data": {
+            "name": "TURRET_HUB"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "D1_1.0"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "D2_1.0"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "TURRET_HUB"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "D2_1.1"
+          }
+        }
+      ]
+    }
+  },
+  "resetOdom": true,
+  "folder": null,
+  "choreoAuto": false
+}

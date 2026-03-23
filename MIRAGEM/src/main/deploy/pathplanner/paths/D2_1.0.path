@@ -1,0 +1,115 @@
+{
+  "version": "2025.0",
+  "waypoints": [
+    {
+      "anchor": {
+        "x": 7.83944629274124,
+        "y": 5.755891736264509
+      },
+      "prevControl": null,
+      "nextControl": {
+        "x": 7.443332583341988,
+        "y": 6.668703502219715
+      },
+      "isLocked": false,
+      "linkedName": "D1_1.0E"
+    },
+    {
+      "anchor": {
+        "x": 4.702651142052879,
+        "y": 7.475296458042143
+      },
+      "prevControl": {
+        "x": 7.099825260709602,
+        "y": 7.5375002994925175
+      },
+      "nextControl": {
+        "x": 2.512296718972895,
+        "y": 7.41845934379458
+      },
+      "isLocked": false,
+      "linkedName": null
+    },
+    {
+      "anchor": {
+        "x": 1.336519373237985,
+        "y": 4.941541148027325
+      },
+      "prevControl": {
+        "x": 3.3229627068189425,
+        "y": 7.4816909166216945
+      },
+      "nextControl": null,
+      "isLocked": false,
+      "linkedName": "D2_1.0E"
+    }
+  ],
+  "rotationTargets": [
+    {
+      "waypointRelativePos": 0.7013194722111143,
+      "rotationDegrees": 180.0
+    }
+  ],
+  "constraintZones": [
+    {
+      "name": "Constraints Zone",
+      "minWaypointRelativePos": 1.8509021842355164,
+      "maxWaypointRelativePos": 2.0,
+      "constraints": {
+        "maxVelocity": 1.0,
+        "maxAcceleration": 1.0,
+        "maxAngularVelocity": 540.0,
+        "maxAngularAcceleration": 720.0,
+        "nominalVoltage": 12.0,
+        "unlimited": false
+      }
+    },
+    {
+      "name": "Constraints Zone",
+      "minWaypointRelativePos": 0,
+      "maxWaypointRelativePos": 0.631528964862275,
+      "constraints": {
+        "maxVelocity": 1.0,
+        "maxAcceleration": 1.0,
+        "maxAngularVelocity": 540.0,
+        "maxAngularAcceleration": 720.0,
+        "nominalVoltage": 12.0,
+        "unlimited": false
+      }
+    }
+  ],
+  "pointTowardsZones": [],
+  "eventMarkers": [
+    {
+      "name": "INTAKE_OFF",
+      "waypointRelativePos": 0.411206077872748,
+      "endWaypointRelativePos": null,
+      "command": null
+    },
+    {
+      "name": "CLIMBER_UP",
+      "waypointRelativePos": 1.6799620132953361,
+      "endWaypointRelativePos": null,
+      "command": null
+    }
+  ],
+  "globalConstraints": {
+    "maxVelocity": 3.0,
+    "maxAcceleration": 3.0,
+    "maxAngularVelocity": 540.0,
+    "maxAngularAcceleration": 720.0,
+    "nominalVoltage": 12.0,
+    "unlimited": false
+  },
+  "goalEndState": {
+    "velocity": 0,
+    "rotation": 166.44648145627107
+  },
+  "reversed": false,
+  "folder": "DEPOT",
+  "idealStartingState": {
+    "velocity": 0,
+    "rotation": -90.0
+  },
+  "useDefaultConstraints": true
+}
