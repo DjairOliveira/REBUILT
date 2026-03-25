@@ -24,12 +24,17 @@ import frc.robot.subsystems.Climber;
 import frc.robot.subsystems.Intake;
 import frc.robot.subsystems.Turret;
 
+import org.littletonrobotics.junction.Logger;
+import org.littletonrobotics.junction.LoggedRobot;
+import org.littletonrobotics.junction.wpilog.WPILOGWriter;
+import org.littletonrobotics.junction.networktables.NT4Publisher;
+
 /**
  * The VM is configured to automatically run this class, and to call the functions corresponding to each mode, as
  * described in the TimedRobot documentation. If you change the name of this class or the package after creating this
  * project, you must also update the build.gradle file in the project.
  */
-public class Robot extends TimedRobot
+public class Robot extends LoggedRobot
 {
   private static Robot instance;
 
@@ -39,7 +44,6 @@ public class Robot extends TimedRobot
   private RobotContainer m_robotContainer;
 
   public static double linearVelocity=0;
-  public static double velX=0, velY=0;
 
   public static final Pigeon2 mPigeon2 = new Pigeon2(13);
 
@@ -133,6 +137,19 @@ public class Robot extends TimedRobot
     }
 
     initializeRobot();
+
+    Logger.recordMetadata("ProjectName", "MeuRobo");
+
+    if (isReal()) {
+        Logger.addDataReceiver(new WPILOGWriter());
+        Logger.addDataReceiver(new NT4Publisher());
+    } else {
+        // SIMULAÇÃO 👇
+        Logger.addDataReceiver(new WPILOGWriter("logs"));
+        Logger.addDataReceiver(new NT4Publisher());
+    }
+
+    Logger.start();
   }
 
   /**
@@ -164,22 +181,14 @@ public class Robot extends TimedRobot
     NetworkTableInstance.getDefault().getTable("PERIODIC INTAKE").getEntry("Spindex Velocity").setDouble(Intake.mOrganizador.getEncoder().getVelocity());
     NetworkTableInstance.getDefault().getTable("PERIODIC INTAKE").getEntry("Esteira Velocity").setDouble(Intake.getSpeedEsteira());
 
+    Logger.recordOutput("Intake/InclinaPosition", Intake.getInclina());
+    Logger.recordOutput("Intake/ColetorPosition", Intake.getIntake());
+    Logger.recordOutput("Intake/InclinaVelocity", Intake.mInclina.getVelocity().getValueAsDouble());
+    Logger.recordOutput("Intake/Spindex Velocity", Intake.mOrganizador.getEncoder().getVelocity());
+    Logger.recordOutput("Intake/Esteira Velocity", Intake.getSpeedEsteira());
+    Logger.recordOutput("Intake/InclinaPosition", Intake.getInclina());
+
     NetworkTableInstance.getDefault().getTable("PERIODIC CLIMBER").getEntry("Position").setDouble(Climber.getPosition());
-
-    NetworkTableInstance.getDefault().getTable("PERIODIC TURRET").getEntry("Horizontal Position").setDouble(Turret.getHorizontal());
-    NetworkTableInstance.getDefault().getTable("PERIODIC TURRET").getEntry("Horizontal Velocity").setDouble(Turret.getHorizontalVelocity());
-    NetworkTableInstance.getDefault().getTable("PERIODIC TURRET").getEntry("Vertical Position").setDouble(Turret.getVertical());
-    NetworkTableInstance.getDefault().getTable("PERIODIC TURRET").getEntry("Horizontal Position").setDouble(Turret.getHorizontal());
-    NetworkTableInstance.getDefault().getTable("PERIODIC TURRET").getEntry("Shooter Right").setDouble(Turret.mShooter.getVelocity().getValueAsDouble());
-    NetworkTableInstance.getDefault().getTable("PERIODIC TURRET").getEntry("Shooter Left").setDouble(Turret.mShooterFlw.getVelocity().getValueAsDouble());
-    // NetworkTableInstance.getDefault().getTable("PERIODIC TURRET").getEntry("Is Finish").setBoolean(mTurret.isFinished());
-
-    NetworkTableInstance.getDefault().getTable("PERIODIC ROBOT").getEntry("Velocity X ms").setDouble(velX);
-    NetworkTableInstance.getDefault().getTable("PERIODIC ROBOT").getEntry("Velocity Y ms").setDouble(velY);
-    NetworkTableInstance.getDefault().getTable("PERIODIC ROBOT").getEntry("Linear Velocity").setDouble(linearVelocity);
-    NetworkTableInstance.getDefault().getTable("PERIODIC ROBOT").getEntry("Linear Velocity").setDouble(linearVelocity);
-    // NetworkTableInstance.getDefault().getTable("ROBOT").getEntry("Angular Velocity").setDouble(speeds.omegaRadiansPerSecond);
-    NetworkTableInstance.getDefault().getTable("PERIODIC ROBOT").getEntry("YAW").setDouble(mPigeon2.getYaw().getValueAsDouble());
 
     NetworkTableInstance.getDefault().getTable("PERIODIC ROBOT").getEntry("TIMER").setDouble(elapsedTime);
 
@@ -227,6 +236,8 @@ public class Robot extends TimedRobot
     {
       m_autonomousCommand.schedule();
     }
+
+    initializeRobot();
   }
 
   /**

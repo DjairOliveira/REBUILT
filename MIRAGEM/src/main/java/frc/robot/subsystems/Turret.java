@@ -3,6 +3,9 @@ package frc.robot.subsystems;
 import com.revrobotics.spark.SparkMax;
 
 import java.util.Optional;
+
+import org.opencv.core.Mat;
+
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.configs.TalonFXSConfiguration;
 import com.ctre.phoenix6.controls.PositionDutyCycle;
@@ -21,19 +24,22 @@ import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
 
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
-import edu.wpi.first.math.geometry.Transform2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Robot;
 import frc.robot.subsystems.swervedrive.BateryFilter;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
+
+import org.littletonrobotics.junction.Logger;
 
 public class Turret extends Command {
 
@@ -70,9 +76,12 @@ public class Turret extends Command {
     double[] speed = {-0.485, -0.5, -0.525, -0.54, -0.5625, -0.59, -0.63, -0.65};
 
     private final SwerveSubsystem swerve;
+    
+    
+    public Field2d field = new Field2d();
 
     public Turret(SwerveSubsystem swerve) {
-    this.swerve=swerve;
+        this.swerve=swerve;
         configHorizontal(0.012, -1, 1);
         configVertical(0.15, -0.15, 0.3);
         configEngatilha(NeutralModeValue.Coast);
@@ -110,6 +119,8 @@ public class Turret extends Command {
             mode = true;
         }
         else{
+            targetX = !isRedAlliance() ? 2.331 : 14.32;
+            targetY = 1.829;
             mode = false;
         }
 
@@ -123,17 +134,8 @@ public class Turret extends Command {
         double Turret_X = DispMove[5];
         double Turret_Y = DispMove[6];
 
-
-        NetworkTableInstance.getDefault().getTable("ROBOT").getEntry("OdometryRobot").setDoubleArray(new double[] {
-            RobotX, RobotY, Math.toRadians(RobotYAW-180)});
-
-        NetworkTableInstance.getDefault().getTable("ROBOT").getEntry("TurretPose").setDoubleArray(new double[] {
-            Turret_X, Turret_Y, Math.toRadians(0)});
-
-
         if(mode){
             poseHorizontal = MathUtil.inputModulus(-DispMove[1], -165, 180);
-            // poseVertical = Math.max(0, Math.min(2.8, interpolate(DispMove[0], distances, angle) * Robot.setInclina.getDouble(0)));
             poseVertical = map(Para_bola(TurretDistance), 45, 80, 6, 0);
             speedShooter = Math.max(-0.7, Math.min(-0.52, interpolate(TurretDistance, distances, speed) * Robot.velocityTiro.getDouble(0)));
             // speedShooter = Robot.velocityTiro.getDouble(0);
@@ -177,9 +179,7 @@ public class Turret extends Command {
                     Intake.setIntakeSpeed(1);
                 }
                 if(contIntake >= 10) contIntake = 0;
-
             }
-
         }
         else {
             speedEgatilha = 0;
@@ -190,15 +190,14 @@ public class Turret extends Command {
 
         setShotter(calculatePID(-2, speedShooter, (getShooterVelocity()/100), speedShooter, -1, -0.45));
         setDisparo(speedEgatilha,speedOrganiza,speedEsteira);
+
         SmartDashboard.putNumber("value pid", calculatePID(-2, speedShooter, (getShooterVelocity()/100), speedShooter, -1, -0.52));
 
         // mBateryFilter.updateAndGetGain();
         // BatFilter = mBateryFilter.getFilteredVoltage();
         // SmartDashboard.putNumber("BATERIA", BatFilter);
 
-        // NetworkTableInstance.getDefault().getTable("TURRET").getEntry("Inter angle").setDouble(interpolate(TurretDistance, distances, angle));
         NetworkTableInstance.getDefault().getTable("TURRET").getEntry("Inter speed").setDouble(interpolate(TurretDistance, distances, speed));
-        // NetworkTableInstance.getDefault().getTable("TURRET").getEntry("Inter future angle").setDouble(interpolate(DispMove[0], distances, angle));
         NetworkTableInstance.getDefault().getTable("TURRET").getEntry("Inter future speed").setDouble(interpolate(DispMove[0], distances, speed));
         
         NetworkTableInstance.getDefault().getTable("TURRET").getEntry("TurretDistance").setDouble(TurretDistance);
@@ -211,7 +210,8 @@ public class Turret extends Command {
         NetworkTableInstance.getDefault().getTable("TURRET").getEntry("speedPower").setDouble(speedShooter);
 
         SmartDashboard.putNumber("contador", contIntake);
-        
+
+        setLogger();
 
     }
 
@@ -227,6 +227,14 @@ public class Turret extends Command {
         setEngatilha(0);
         Intake.setSpeedOrganizador(0);
         Intake.setSpeedEsteira(0);
+    }
+
+    private void setLogger(){
+        Logger.recordOutput("Turret/HorizontalPosition", getHorizontal());
+        Logger.recordOutput("Turret/VerticalPosition", getVertical());
+        Logger.recordOutput("Turret/ShooterRight", mShooter.getVelocity().getValueAsDouble());
+        Logger.recordOutput("Turret/ShooterLeft", mShooterFlw.getVelocity().getValueAsDouble());
+        
     }
 
     private void setDisparo (double engatilha, double organizador, double esteira){
@@ -251,29 +259,25 @@ public class Turret extends Command {
         return Math.toDegrees(Math.atan(tan_angle_T));
     }
 
-    private double[] futureMove (double Hub_X, double Hub_Y){
- 
+    private double[] futureMove (double Target_X, double Target_Y){
         Pose2d robot_getValues = swerve.getPose();
         ChassisSpeeds robo_speed = swerve.getFieldVelocity();
 
         Rotation2d Robot_Yaw = robot_getValues.getRotation();
-        // Pose2d robotPose = swerve.getPose();
         Translation2d robot_pose = robot_getValues.getTranslation();
 
         ChassisSpeeds fielSpeeds = ChassisSpeeds.fromRobotRelativeSpeeds(robo_speed, Robot_Yaw);
 
-        double VelX = isRedAlliance() ? fielSpeeds.vxMetersPerSecond* (-1) : fielSpeeds.vxMetersPerSecond;
-        double VelY = isRedAlliance() ? fielSpeeds.vyMetersPerSecond * (-1) : fielSpeeds.vyMetersPerSecond;
+        // double VelX = isRedAlliance() ? fielSpeeds.vxMetersPerSecond * (-1) : fielSpeeds.vxMetersPerSecond;
+        // double VelY = isRedAlliance() ? fielSpeeds.vyMetersPerSecond * (-1) : fielSpeeds.vyMetersPerSecond;
 
-        Translation2d pose_Hub = new Translation2d(Hub_X , Hub_Y);
-        Translation2d offsetTurret = new Translation2d(0.1425, 0.1535);   //tudo negativo//////////////************************************** */
-        Translation2d turretOffSet = robot_pose.plus(offsetTurret.rotateBy(Robot_Yaw)); // offsetTurret.rotateBy(Robot_Yaw)
+        double VelX = fielSpeeds.vxMetersPerSecond * (-1);
+        double VelY = fielSpeeds.vyMetersPerSecond * (-1);
+
+        Translation2d pose_Hub = new Translation2d(Target_X , Target_Y);
+        Translation2d offsetTurret = new Translation2d(-0.1425, -0.1535);
+        Translation2d turretOffSet = robot_pose.plus(offsetTurret.rotateBy(Robot_Yaw));
         double turretDistance_hub = turretOffSet.getDistance(pose_Hub);
-
-        // Transform2d turretTransform = new Transform2d(offsetTurret, new Rotation2d());
-        // Pose2d turretPose = robotPose.transformBy(turretTransform);
-        
-        NetworkTableInstance.getDefault().getTable("FIELD").getEntry("HUB").setDoubleArray(new double[] {Hub_X, Hub_Y, Math.toRadians(0)});
 
         double omega = robo_speed.omegaRadiansPerSecond;
         Translation2d turretOffsetField = offsetTurret.rotateBy(Robot_Yaw);
@@ -294,9 +298,38 @@ public class Turret extends Command {
         
         double distance_FUTURE = turret_toHub_FUTURE.getNorm();
 
+
+        NetworkTableInstance.getDefault().getTable("ROBOT").getEntry("OdometryRobot").setDoubleArray(new double[] {
+        robot_pose.getX(), robot_pose.getY(), Robot_Yaw.getRadians()});
+
+        NetworkTableInstance.getDefault().getTable("ROBOT").getEntry("TurretFuture").setDoubleArray(new double[] {
+        TurretFuture.getX(), TurretFuture.getY(), turret_toHub_FUTURE.getAngle().getRadians()});
+        
+        NetworkTableInstance.getDefault().getTable("ROBOT").getEntry("TurretPose").setDoubleArray(new double[] {
+        turretOffSet.getX(), turretOffSet.getY(), pose_Hub.minus(turretOffSet).getAngle().getRadians()});
+
+        NetworkTableInstance.getDefault().getTable("FIELD").getEntry("Target").setDoubleArray(new double[] {Target_X, Target_Y, Math.toRadians(0)});
+        
+        Pose2d robot = new Pose2d(swerve.getPose().getX(), swerve.getPose().getY(), new Rotation2d(swerve.getPose().getRotation().getRadians()));
+        Pose2d target = new Pose2d(Target_X, Target_Y, new Rotation2d(0));
+        Pose2d turretFuture = new Pose2d(TurretFuture.getX(), TurretFuture.getY(), new Rotation2d(turret_toHub_FUTURE.getAngle().getRadians()));
+        Pose2d turret = new Pose2d(turretOffSet.getX(), turretOffSet.getY(), new Rotation2d(turret_toHub_FUTURE.getAngle().getRadians()));
+        
+        SmartDashboard.putData("FIELD", field);
+        field.getObject("Future").setPose(turretFuture);
+        field.getObject("Current").setPose(turret);
+        field.getObject("Robot").setPose(robot);
+
+        Logger.recordOutput("Robo/Odometry", robot);
+        Logger.recordOutput("Turret/OdometryFuture", turretFuture);
+
+        Logger.recordOutput("Turret/DistanceTarget", distance_FUTURE);
+        Logger.recordOutput("Turret/Target", target);
+        Logger.recordOutput("Turret/turretTargetAngle_FUTURE", turretTargetAngle_FUTURE);
+
         return new double[] {
             distance_FUTURE, MathUtil.inputModulus(turretTargetAngle_FUTURE.getDegrees(), -165, 180),
-            robot_getValues.getX(), robot_getValues.getY(), Robot_Yaw.getDegrees(),
+            robot_pose.getX(), robot_pose.getY(), Robot_Yaw.getDegrees(),
             turretOffSet.getX(), turretOffSet.getY()};
     }
 
