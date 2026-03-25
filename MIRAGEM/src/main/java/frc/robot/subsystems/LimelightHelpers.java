@@ -557,6 +557,7 @@ public class LimelightHelpers {
 
         public RawFiducial[] rawFiducials; 
         public boolean isMegaTag2;
+        public double ambiguity;
 
         /**
          * Instantiates a PoseEstimate object with default values

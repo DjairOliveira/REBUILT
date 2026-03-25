@@ -17,6 +17,9 @@ import com.pathplanner.lib.path.PathPlannerPath;
 import com.pathplanner.lib.util.DriveFeedforwards;
 import com.pathplanner.lib.util.swerve.SwerveSetpoint;
 import com.pathplanner.lib.util.swerve.SwerveSetpointGenerator;
+
+import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.VecBuilder;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
@@ -137,34 +140,82 @@ public class SwerveSubsystem extends SubsystemBase
   }
 
   @Override
-public void periodic() {
+  public void periodic() {
     swerveDrive.updateOdometry();
 
     if (visionDriveTest) {
         vision.updatePoseEstimation(swerveDrive);
     }
 
-    LimelightHelpers.PoseEstimate back =
-        LimelightHelpers.getBotPoseEstimate_wpiBlue("limelight-back");
-    // LimelightHelpers.PoseEstimate front =
-    //     LimelightHelpers.getBotPoseEstimate_wpiBlue("limelight-front");
+    // LimelightHelpers.PoseEstimate back =
+    //     LimelightHelpers.getBotPoseEstimate_wpiBlue("limelight-back");
+    // // LimelightHelpers.PoseEstimate front =
+    // //     LimelightHelpers.getBotPoseEstimate_wpiBlue("limelight-front");
 
-    boolean backValid = back != null && back.tagCount > 1;
-    // boolean frontValid = front != null && front.tagCount > 1;
+    // boolean backValid = back != null && back.tagCount > 1;
+    // // boolean frontValid = front != null && front.tagCount > 1;
 
-    // if (backValid && (!frontValid || back.tagCount >= front.tagCount)) {
+    // // if (backValid && (!frontValid || back.tagCount >= front.tagCount)) {
+    // //     double ts = Timer.getFPGATimestamp() - (back.latency / 1000.0);
+    // //     getSwerveDrive().addVisionMeasurement(back.pose, ts);
+    // // } 
+    // // else if (frontValid) {
+    // //     double ts = Timer.getFPGATimestamp() - (front.latency / 1000.0);
+    // //     getSwerveDrive().addVisionMeasurement(front.pose, ts);
+    // // }
+
+    // if (backValid) {
     //     double ts = Timer.getFPGATimestamp() - (back.latency / 1000.0);
     //     getSwerveDrive().addVisionMeasurement(back.pose, ts);
-    // } 
-    // else if (frontValid) {
-    //     double ts = Timer.getFPGATimestamp() - (front.latency / 1000.0);
-    //     getSwerveDrive().addVisionMeasurement(front.pose, ts);
     // }
 
-    if (backValid) {
-        double ts = Timer.getFPGATimestamp() - (back.latency / 1000.0);
-        getSwerveDrive().addVisionMeasurement(back.pose, ts);
-    } 
+
+
+    var front = LimelightHelpers.getBotPoseEstimate_wpiBlue("limelight-front");
+    var back = LimelightHelpers.getBotPoseEstimate_wpiBlue("limelight-back");
+
+    // // LIMELIGHT 1
+    // if (isValid(front)) {
+    //     swerveDrive.swerveDrivePoseEstimator.addVisionMeasurement(
+    //         front.pose,
+    //         front.timestampSeconds
+    //     );
+    // }
+
+    // // LIMELIGHT 2
+    // if (isValid(back)) {
+    //     swerveDrive.swerveDrivePoseEstimator.addVisionMeasurement(
+    //         back.pose,
+    //         back.timestampSeconds
+    //     );
+    // }
+
+
+    // LIMELIGHT 1
+    if (isValid(front)) {
+      double trust1 = MathUtil.clamp(front.avgTagDist / 3.0, 0.5, 2.0);
+      swerveDrive.swerveDrivePoseEstimator.setVisionMeasurementStdDevs(
+        VecBuilder.fill(trust1, trust1, Units.degreesToRadians(10)));
+
+      swerveDrive.swerveDrivePoseEstimator.addVisionMeasurement(front.pose, front.timestampSeconds);
+    }
+
+    // LIMELIGHT 2
+    if (isValid(back)) {
+      double trust2 = MathUtil.clamp(back.avgTagDist / 3.0, 0.5, 2.0);
+      swerveDrive.swerveDrivePoseEstimator.setVisionMeasurementStdDevs(
+        VecBuilder.fill(trust2, trust2, Units.degreesToRadians(10)));
+
+      swerveDrive.swerveDrivePoseEstimator.addVisionMeasurement(back.pose, back.timestampSeconds);
+    }
+
+  }
+
+  public boolean isValid(LimelightHelpers.PoseEstimate est) {
+    return est != null
+        && est.tagCount > 1
+        && est.avgTagDist < 4.0   // distância máxima
+        && est.ambiguity < 0.2;   // qualidade da pose
 }
 
   @Override
