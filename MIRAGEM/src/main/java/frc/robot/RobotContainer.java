@@ -118,7 +118,7 @@ public class RobotContainer
 
     drivebase.setDefaultCommand(driverYuri);
     Cmdriver.start().onTrue((Commands.runOnce(drivebase::zeroGyro)));
-    Cmdriver.leftBumper().onTrue((Commands.runOnce(drivebase::lock, drivebase)));
+    // Cmdriver.leftBumper().onTrue((Commands.runOnce(drivebase::lock, drivebase)));  APENAS PARADO
 
     /********** INTAKE **************************/
     BooleanSupplier protectIntake = ()-> Intake.getInclina() > -15 && Intake.getInclina() < -3. && Intake.getVelocityInclina() > 0 && intakectn==1;

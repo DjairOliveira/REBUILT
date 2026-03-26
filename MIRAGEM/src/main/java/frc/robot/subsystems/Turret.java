@@ -138,7 +138,6 @@ public class Turret extends Command {
             poseHorizontal = MathUtil.inputModulus(-DispMove[1], -165, 180);
             poseVertical = map(Para_bola(TurretDistance), 45, 80, 6, 0);
             speedShooter = Math.max(-0.7, Math.min(-0.52, interpolate(TurretDistance, distances, speed) * Robot.velocityTiro.getDouble(0)));
-            // speedShooter = Robot.velocityTiro.getDouble(0);
         } else{
             poseHorizontal = getHorizontal();
             poseVertical = 0;
@@ -151,6 +150,9 @@ public class Turret extends Command {
         setHorizontal(poseHorizontal);
         setVertical(poseVertical);
         
+        // NetworkTableInstance.getDefault().getTable("ROBOT").getEntry("TurretPose").setDoubleArray(new double[] {
+        // turretOffSet.getX(), turretOffSet.getY(), pose_Hub.minus(turretOffSet).getAngle().getRadians()});
+
         contIntake++;
 
         if (Math.abs(TurretAngle + getHorizontal()) > 50) {
@@ -168,18 +170,18 @@ public class Turret extends Command {
             speedEgatilha = -0.7;
             speedEsteira = -0.2;
             speedOrganiza = -0.7;
-            if((!isRedAlliance() && robotPose.getX() <= blueX) || (isRedAlliance() && robotPose.getX() >= redX)){
-                int timer = 5;
-                if(contIntake < 7){
-                    Intake.setInclina(-21, 0.2, 0.8);
-                    Intake.setIntakeSpeed(1);
-                }
-                if(contIntake >= timer && contIntake < 10){
-                    Intake.setInclina(-12, 0.2, 0.8);
-                    Intake.setIntakeSpeed(1);
-                }
-                if(contIntake >= 10) contIntake = 0;
-            }
+            // if((!isRedAlliance() && robotPose.getX() <= blueX) || (isRedAlliance() && robotPose.getX() >= redX)){
+            //     int timer = 5;
+            //     if(contIntake < 7){
+            //         Intake.setInclina(-21, 0.2, 0.8);
+            //         Intake.setIntakeSpeed(1);
+            //     }
+            //     if(contIntake >= timer && contIntake < 10){
+            //         Intake.setInclina(-12, 0.2, 0.8);
+            //         Intake.setIntakeSpeed(1);
+            //     }
+            //     if(contIntake >= 10) contIntake = 0;
+            // }
         }
         else {
             speedEgatilha = 0;
@@ -192,10 +194,6 @@ public class Turret extends Command {
         setDisparo(speedEgatilha,speedOrganiza,speedEsteira);
 
         SmartDashboard.putNumber("value pid", calculatePID(-2, speedShooter, (getShooterVelocity()/100), speedShooter, -1, -0.52));
-
-        // mBateryFilter.updateAndGetGain();
-        // BatFilter = mBateryFilter.getFilteredVoltage();
-        // SmartDashboard.putNumber("BATERIA", BatFilter);
 
         NetworkTableInstance.getDefault().getTable("TURRET").getEntry("Inter speed").setDouble(interpolate(TurretDistance, distances, speed));
         NetworkTableInstance.getDefault().getTable("TURRET").getEntry("Inter future speed").setDouble(interpolate(DispMove[0], distances, speed));
@@ -268,9 +266,6 @@ public class Turret extends Command {
 
         ChassisSpeeds fielSpeeds = ChassisSpeeds.fromRobotRelativeSpeeds(robo_speed, Robot_Yaw);
 
-        // double VelX = isRedAlliance() ? fielSpeeds.vxMetersPerSecond * (-1) : fielSpeeds.vxMetersPerSecond;
-        // double VelY = isRedAlliance() ? fielSpeeds.vyMetersPerSecond * (-1) : fielSpeeds.vyMetersPerSecond;
-
         double VelX = fielSpeeds.vxMetersPerSecond * (-1);
         double VelY = fielSpeeds.vyMetersPerSecond * (-1);
 
@@ -304,7 +299,10 @@ public class Turret extends Command {
 
         NetworkTableInstance.getDefault().getTable("ROBOT").getEntry("TurretFuture").setDoubleArray(new double[] {
         TurretFuture.getX(), TurretFuture.getY(), turret_toHub_FUTURE.getAngle().getRadians()});
-        
+
+        NetworkTableInstance.getDefault().getTable("ROBOT").getEntry("TurretFutureReal").setDoubleArray(new double[] {
+        TurretFuture.getX(), TurretFuture.getY(), -Math.toRadians((Robot_Yaw.getDegrees()+180)-getHorizontal())});
+
         NetworkTableInstance.getDefault().getTable("ROBOT").getEntry("TurretPose").setDoubleArray(new double[] {
         turretOffSet.getX(), turretOffSet.getY(), pose_Hub.minus(turretOffSet).getAngle().getRadians()});
 
