@@ -72,8 +72,11 @@ public class Turret extends Command {
 
     public static double[] pose = new double[3];
 
-    double[] distances = {2, 2.551, 3.089, 3.52, 4.027, 4.635, 5.19, 5.7};
-    double[] speed = {-0.485, -0.5, -0.525, -0.54, -0.5625, -0.59, -0.63, -0.65};
+    // double[] distances = {2, 2.551, 3.089, 3.52, 4.027, 4.635, 5.19, 5.7};
+    // double[] speed = {-0.485, -0.5, -0.525, -0.54, -0.5625, -0.59, -0.63, -0.65};
+
+    double[] distances = {0.7, 1.05, 1.35, 1.65, 2, 2.551, 3.089, 3.52, 4.027, 4.635, 5.19, 5.7};
+    double[] speed = {-0.4,-0.42,-0.44, -0.46, -0.485, -0.5, -0.525, -0.54, -0.5625, -0.59, -0.63, -0.65};
 
     private final SwerveSubsystem swerve;
     
@@ -266,8 +269,8 @@ public class Turret extends Command {
 
         ChassisSpeeds fielSpeeds = ChassisSpeeds.fromRobotRelativeSpeeds(robo_speed, Robot_Yaw);
 
-        double VelX = fielSpeeds.vxMetersPerSecond * (-1);
-        double VelY = fielSpeeds.vyMetersPerSecond * (-1);
+        double VelX = isRedAlliance() ? fielSpeeds.vxMetersPerSecond * (-1) : fielSpeeds.vxMetersPerSecond;
+        double VelY = isRedAlliance() ? fielSpeeds.vyMetersPerSecond * (-1) : fielSpeeds.vyMetersPerSecond;
 
         Translation2d pose_Hub = new Translation2d(Target_X , Target_Y);
         Translation2d offsetTurret = new Translation2d(-0.1425, -0.1535);
@@ -281,7 +284,7 @@ public class Turret extends Command {
         double TotalVelX = -VelX + rotVelX;
         double TotalVelY = -VelY + rotVelY;
 
-        double kTimer = Math.max(1, Math.min(1.8, map(turretDistance_hub, 0.7, 7, 1, 1.8))) ; //1 e 1,75 good   
+        double kTimer = Math.max(1, Math.min(2, map(turretDistance_hub, 0.7, 7, 1, 2))) ; //1 e 1,75 good
         double futureX = TotalVelX * kTimer;
         double futurey = TotalVelY * kTimer;
         Translation2d TurretFuture = turretOffSet.plus(new Translation2d(futureX, futurey));
@@ -301,7 +304,7 @@ public class Turret extends Command {
         TurretFuture.getX(), TurretFuture.getY(), turret_toHub_FUTURE.getAngle().getRadians()});
 
         NetworkTableInstance.getDefault().getTable("ROBOT").getEntry("TurretFutureReal").setDoubleArray(new double[] {
-        TurretFuture.getX(), TurretFuture.getY(), -Math.toRadians((Robot_Yaw.getDegrees()+180)-getHorizontal())});
+        TurretFuture.getX(), TurretFuture.getY(), Math.toRadians((Robot_Yaw.getDegrees()+180)-getHorizontal())});
 
         NetworkTableInstance.getDefault().getTable("ROBOT").getEntry("TurretPose").setDoubleArray(new double[] {
         turretOffSet.getX(), turretOffSet.getY(), pose_Hub.minus(turretOffSet).getAngle().getRadians()});

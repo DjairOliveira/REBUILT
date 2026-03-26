@@ -144,14 +144,14 @@ public class Robot extends LoggedRobot
         Logger.addDataReceiver(new WPILOGWriter());
         Logger.addDataReceiver(new NT4Publisher());
     } else {
-        // SIMULAÇÃO 👇
+        // SIMULAÇÃO
         Logger.addDataReceiver(new WPILOGWriter("logs"));
         Logger.addDataReceiver(new NT4Publisher());
     }
 
     Logger.start();
   }
-
+// roborio-9168-frc.local lvuser@roborio-XXXX:~$
   /**
    * This function is called every 20 ms, no matter the mode. Use this for items like diagnostics that you want ran
    * during disabled, autonomous, teleoperated and test.
