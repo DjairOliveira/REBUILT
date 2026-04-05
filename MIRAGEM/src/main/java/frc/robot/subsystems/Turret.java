@@ -79,6 +79,8 @@ public class Turret extends Command {
 
     public static double OmegaCmd=0;
 
+    public ChassisSpeeds speeds;
+
     // double[] distances = {2, 2.551, 3.089, 3.52, 4.027, 4.635, 5.19, 5.7};
     // double[] speed = {-0.485, -0.5, -0.525, -0.54, -0.5625, -0.59, -0.63, -0.65};
 
@@ -331,10 +333,9 @@ public class Turret extends Command {
         
         // double distance_FUTURE = turret_toHub_FUTURE.getNorm();
 
-
-        // ChassisSpeeds speeds = ChassisSpeeds.fromFieldRelativeSpeeds(
-        //     control.getLeftY()*(-1), control.getLeftX()*(-1), OmegaCmd, Robot_Yaw);
-
+        speeds = ChassisSpeeds.fromFieldRelativeSpeeds(
+            control.getLeftY()*(-1), control.getLeftX()*(-1), OmegaCmd, Robot_Yaw);
+        
         // swerve.drive(speeds);
         
         NetworkTableInstance.getDefault().getTable("ROBOT").getEntry("Aling").setDoubleArray(new double[] {
@@ -379,9 +380,10 @@ public class Turret extends Command {
             turretOffSet.getX(), turretOffSet.getY()};
     }
 
-    public double getOmega(){
-        return control.getLeftBumperButton() ? OmegaCmd : control.getRightX();
+    public ChassisSpeeds getSpeeds() {
+        return speeds;
     }
+
     private static double calculatePID(double kP, double setpoint, double measurement, double baseOutput, double outputMin, double outputMax) {
         double kI = 0.0, kD = 0.0;
 

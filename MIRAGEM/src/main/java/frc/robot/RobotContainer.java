@@ -63,10 +63,19 @@ public class RobotContainer
   SwerveInputStream driveAngularVelocityYuri = SwerveInputStream.of(drivebase.getSwerveDrive(),
                                                                 () -> Cmdriver.getLeftY() * -normalized(Robot.velocityRobot),
                                                                 () -> Cmdriver.getLeftX() * -normalized(Robot.velocityRobot))
-                                                            .withControllerRotationAxis(() -> (mTurret.getOmega() * -normalized(Robot.velocityRobot)) * 0.8)
+                                                            .withControllerRotationAxis(() -> (Cmdriver.getRightX() * -normalized(Robot.velocityRobot)) * 0.8)
                                                             .deadband(OperatorConstants.DEADBAND)
                                                             .scaleTranslation(0.8)
                                                             .allianceRelativeControl(true);
+
+  SwerveInputStream shooterDrive = SwerveInputStream.of(
+      drivebase.getSwerveDrive(),
+      () -> mTurret.getSpeeds().vxMetersPerSecond,
+      () -> mTurret.getSpeeds().vyMetersPerSecond).withControllerRotationAxis(
+      () -> mTurret.getSpeeds().omegaRadiansPerSecond
+  );
+
+  Command driveMode = null;
 
   public RobotContainer()
   {
@@ -114,9 +123,15 @@ public class RobotContainer
   private void configureBindings()
   {
     // Command driverJose = drivebase.driveFieldOriented(driveAngularVelocityJose);
-    Command driverYuri = drivebase.driveFieldOriented(driveAngularVelocityYuri);
+    // Command driverYuri = drivebase.driveFieldOriented(driveAngularVelocityYuri);
 
-    drivebase.setDefaultCommand(driverYuri);
+    BooleanSupplier  driverShooter = ()-> driver.getLeftBumperButtonPressed();
+    BooleanSupplier driverYuri = ()-> driver.getLeftBumperButtonReleased();
+
+    activateCommandOnCondition(driverYuri, driveMode = drivebase.driveFieldOriented(driveAngularVelocityYuri));
+    activateCommandOnCondition(driverShooter, driveMode = drivebase.driveFieldOriented(shooterDrive));
+
+    drivebase.setDefaultCommand(driveMode);
     Cmdriver.start().onTrue((Commands.runOnce(drivebase::zeroGyro)));
     // Cmdriver.leftBumper().onTrue((Commands.runOnce(drivebase::lock, drivebase)));  APENAS PARADO
 
