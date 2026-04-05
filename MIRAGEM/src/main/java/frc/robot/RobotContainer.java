@@ -63,7 +63,7 @@ public class RobotContainer
   SwerveInputStream driveAngularVelocityYuri = SwerveInputStream.of(drivebase.getSwerveDrive(),
                                                                 () -> Cmdriver.getLeftY() * -normalized(Robot.velocityRobot),
                                                                 () -> Cmdriver.getLeftX() * -normalized(Robot.velocityRobot))
-                                                            .withControllerRotationAxis(() -> (Cmdriver.getRightX() * -normalized(Robot.velocityRobot)) * 0.8)
+                                                            .withControllerRotationAxis(() -> (mTurret.getOmega() * -normalized(Robot.velocityRobot)) * 0.8)
                                                             .deadband(OperatorConstants.DEADBAND)
                                                             .scaleTranslation(0.8)
                                                             .allianceRelativeControl(true);
@@ -88,9 +88,9 @@ public class RobotContainer
       Commands.runOnce(()-> Turret.setEngatilha(0)),
       Commands.runOnce(()-> Intake.setIntakeSpeed(1))));
 
-    new EventTrigger("TURRET_OFF").onTrue(new SequentialCommandGroup(
-      Commands.runOnce(() -> Turret.end()),
-      Commands.runOnce(() -> mTurret.cancel())));
+    // new EventTrigger("TURRET_OFF").onTrue(new SequentialCommandGroup(
+    //   Commands.runOnce(() -> Turret.end()),
+    //   Commands.runOnce(() -> mTurret.cancel())));
 
     new EventTrigger("TURRET_MOVE").onTrue(new Turret(drivebase));
       
@@ -165,7 +165,7 @@ public class RobotContainer
       Commands.runOnce(() -> Turret.setHorizontal(0))));
 
     Cmdriver.leftBumper().whileTrue(mTurret.repeatedly());
-    Cmdriver.leftBumper().onFalse(Commands.runOnce(() -> Turret.end()));
+    Cmdriver.leftBumper().onFalse(Commands.runOnce(() -> mTurret.end()));
 
     Cmdriver.rightBumper().whileTrue(new SequentialCommandGroup(
       Commands.runOnce(() -> Turret.setEngatilha(0.4)),

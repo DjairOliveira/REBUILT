@@ -24,14 +24,17 @@ import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 import com.revrobotics.spark.config.SparkMaxConfig;
 
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.controller.ProfiledPIDController;
 import edu.wpi.first.math.estimator.SwerveDrivePoseEstimator;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
+import edu.wpi.first.math.trajectory.TrapezoidProfile;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
@@ -46,6 +49,8 @@ public class Turret extends Command {
     private static double startTime;
     private static int contIntake = 0;
     // private static double BatFilter=12.5;
+
+    private XboxController control = new XboxController(0);
 
     private static double integral = 0;
     private static double previousError = 0;
@@ -71,6 +76,8 @@ public class Turret extends Command {
     BateryFilter mBateryFilter = new BateryFilter();
 
     public static double[] pose = new double[3];
+
+    public static double OmegaCmd=0;
 
     // double[] distances = {2, 2.551, 3.089, 3.52, 4.027, 4.635, 5.19, 5.7};
     // double[] speed = {-0.485, -0.5, -0.525, -0.54, -0.5625, -0.59, -0.63, -0.65};
@@ -213,14 +220,13 @@ public class Turret extends Command {
         SmartDashboard.putNumber("contador", contIntake);
 
         setLogger();
-
     }
 
     public boolean isFinished() {
         return Timer.getFPGATimestamp() - startTime > 2 ? true : false;
     }
 
-    public static void end() {
+    public void end() {
         setHorizontal(getHorizontal());
         setVertical(0);
         mShooter.set(-0.2);
@@ -228,6 +234,11 @@ public class Turret extends Command {
         setEngatilha(0);
         Intake.setSpeedOrganizador(0);
         Intake.setSpeedEsteira(0);
+
+        // ChassisSpeeds speeds = ChassisSpeeds.fromFieldRelativeSpeeds(
+        //     0, 0, 0, new Rotation2d(0));
+
+        // swerve.drive(speeds);
     }
 
     private void setLogger(){
@@ -242,6 +253,7 @@ public class Turret extends Command {
         setEngatilha(engatilha);
         Intake.setSpeedOrganizador(organizador);
         Intake.setSpeedEsteira(esteira);
+
     }
 
     public static double map(double x, double in_min, double in_max, double out_min, double out_max) {
@@ -296,6 +308,39 @@ public class Turret extends Command {
         
         double distance_FUTURE = turret_toHub_FUTURE.getNorm();
 
+        /*  Modifications   */
+        Translation2d delta = pose_Hub.minus(robot_pose);
+        Rotation2d targetAngle = delta.getAngle();
+
+        double error = MathUtil.angleModulus(targetAngle.minus(Robot_Yaw.plus(new Rotation2d(Math.PI))).getRadians());
+        if(error >= 0.5) error = 0;
+
+        double kP = 0.075;
+        OmegaCmd = kP * error;
+
+        OmegaCmd = MathUtil.clamp(OmegaCmd, -3, 3);
+        ProfiledPIDController thetaController = new ProfiledPIDController(1, 0, 0,
+        new TrapezoidProfile.Constraints(6, 10));
+        thetaController.enableContinuousInput(-Math.PI, Math.PI);
+
+        Translation2d roboFuture = robot_pose.plus(new Translation2d(futureX, futurey));
+        Translation2d robotToHUB = pose_Hub.minus(roboFuture);
+        Rotation2d robotAngleFuture = robotToHUB.getAngle();
+        // Rotation2d turretTargetAngle_FUTURE = angTurretToHub_FUTURE.minus(Robot_Yaw);
+        // turretTargetAngle_FUTURE = turretTargetAngle_FUTURE.minus(Rotation2d.fromDegrees(180));
+        
+        // double distance_FUTURE = turret_toHub_FUTURE.getNorm();
+
+
+        // ChassisSpeeds speeds = ChassisSpeeds.fromFieldRelativeSpeeds(
+        //     control.getLeftY()*(-1), control.getLeftX()*(-1), OmegaCmd, Robot_Yaw);
+
+        // swerve.drive(speeds);
+        
+        NetworkTableInstance.getDefault().getTable("ROBOT").getEntry("Aling").setDoubleArray(new double[] {
+        roboFuture.getX(), roboFuture.getY(), robotAngleFuture.getRadians()});
+
+        /* FIM MODIFICAÇÕES */
 
         NetworkTableInstance.getDefault().getTable("ROBOT").getEntry("OdometryRobot").setDoubleArray(new double[] {
         robot_pose.getX(), robot_pose.getY(), Robot_Yaw.getRadians()});
@@ -334,6 +379,9 @@ public class Turret extends Command {
             turretOffSet.getX(), turretOffSet.getY()};
     }
 
+    public double getOmega(){
+        return control.getLeftBumperButton() ? OmegaCmd : control.getRightX();
+    }
     private static double calculatePID(double kP, double setpoint, double measurement, double baseOutput, double outputMin, double outputMax) {
         double kI = 0.0, kD = 0.0;
 
