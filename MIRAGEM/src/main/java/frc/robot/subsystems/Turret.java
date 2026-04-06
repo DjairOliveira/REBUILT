@@ -48,9 +48,6 @@ public class Turret extends Command {
 
     private static double startTime;
     private static int contIntake = 0;
-    // private static double BatFilter=12.5;
-
-    private XboxController control = new XboxController(0);
 
     private static double integral = 0;
     private static double previousError = 0;
@@ -80,9 +77,6 @@ public class Turret extends Command {
     public static double OmegaCmd=0;
 
     public ChassisSpeeds speeds;
-
-    // double[] distances = {2, 2.551, 3.089, 3.52, 4.027, 4.635, 5.19, 5.7};
-    // double[] speed = {-0.485, -0.5, -0.525, -0.54, -0.5625, -0.59, -0.63, -0.65};
 
     double[] distances = {0.7, 1.05, 1.35, 1.65, 2, 2.551, 3.089, 3.52, 4.027, 4.635, 5.19, 5.7};
     double[] speed = {-0.4,-0.42,-0.44, -0.46, -0.485, -0.5, -0.525, -0.54, -0.5625, -0.59, -0.63, -0.65};
@@ -121,18 +115,17 @@ public class Turret extends Command {
             mode = true;
         }
         else if((!isRedAlliance() && robotPose.getX() > blueX + 1.4) || (isRedAlliance() && robotPose.getX() < redX - 1.4)){
-            if((robotPose.getY() - 4.044) >= 0){
-                targetX = !isRedAlliance() ? 2.331 : 14.32;
-                targetY = 6;
-            } else{
-                targetX = !isRedAlliance() ? 2.331 : 14.32;
-                targetY = 1.829;
-            }
+            if((robotPose.getY() - 4.044) >= 0) targetY = 6;
+            else targetY = 1.829;
+
+            targetX = isRedAlliance() ? 14.32 : 2.331;
             mode = true;
         }
         else{
-            targetX = !isRedAlliance() ? 2.331 : 14.32;
-            targetY = 1.829;
+            if((robotPose.getY() - 4.044) >= 0) targetY = 6;
+            else targetY = 1.829;
+
+            targetX = isRedAlliance() ? 14.32 : 2.331;
             mode = false;
         }
 
@@ -162,9 +155,6 @@ public class Turret extends Command {
         setHorizontal(poseHorizontal);
         setVertical(poseVertical);
         
-        // NetworkTableInstance.getDefault().getTable("ROBOT").getEntry("TurretPose").setDoubleArray(new double[] {
-        // turretOffSet.getX(), turretOffSet.getY(), pose_Hub.minus(turretOffSet).getAngle().getRadians()});
-
         contIntake++;
 
         if (Math.abs(TurretAngle + getHorizontal()) > 50) {
@@ -236,11 +226,6 @@ public class Turret extends Command {
         setEngatilha(0);
         Intake.setSpeedOrganizador(0);
         Intake.setSpeedEsteira(0);
-
-        // ChassisSpeeds speeds = ChassisSpeeds.fromFieldRelativeSpeeds(
-        //     0, 0, 0, new Rotation2d(0));
-
-        // swerve.drive(speeds);
     }
 
     private void setLogger(){
@@ -289,28 +274,50 @@ public class Turret extends Command {
         Translation2d pose_Hub = new Translation2d(Target_X , Target_Y);
         Translation2d offsetTurret = new Translation2d(-0.1425, -0.1535);
         Translation2d turretOffSet = robot_pose.plus(offsetTurret.rotateBy(Robot_Yaw));
-        double turretDistance_hub = turretOffSet.getDistance(pose_Hub);
+        // double turretDistance_hub = turretOffSet.getDistance(pose_Hub);
+
+        // double omega = robo_speed.omegaRadiansPerSecond;
+        // Translation2d turretOffsetField = offsetTurret.rotateBy(Robot_Yaw);
+        // double rotVelX = -omega * turretOffsetField.getY();
+        // double rotVelY = omega * turretOffsetField.getX();
+        // double TotalVelX = -VelX + rotVelX;
+        // double TotalVelY = -VelY + rotVelY;
+
+        // double kTimer = Math.max(1, Math.min(2, map(turretDistance_hub, 0.7, 7, 1, 2))) ; //1 e 1,75 good
+        // double futureX = TotalVelX * kTimer;
+        // double futurey = TotalVelY * kTimer;
+        // Translation2d TurretFuture = turretOffSet.plus(new Translation2d(futureX, futurey));
+        
+        // Translation2d turret_toHub_FUTURE = pose_Hub.minus(TurretFuture);
+        // Rotation2d angTurretToHub_FUTURE = turret_toHub_FUTURE.getAngle();
+        // Rotation2d turretTargetAngle_FUTURE = angTurretToHub_FUTURE.minus(Robot_Yaw);
+        // turretTargetAngle_FUTURE = turretTargetAngle_FUTURE.minus(Rotation2d.fromDegrees(180));
+        
+        // double distance_FUTURE = turret_toHub_FUTURE.getNorm();
+
+        /*  Modifications  Chassi Alinha */
+
+        double robotDistance = robot_pose.getDistance(pose_Hub);
 
         double omega = robo_speed.omegaRadiansPerSecond;
-        Translation2d turretOffsetField = offsetTurret.rotateBy(Robot_Yaw);
-        double rotVelX = -omega * turretOffsetField.getY();
-        double rotVelY = omega * turretOffsetField.getX();
-        double TotalVelX = -VelX + rotVelX;
-        double TotalVelY = -VelY + rotVelY;
+        // double rotVelX = -omega * robot_pose.getY();
+        // double rotVelY = omega * robot_pose.getX();
+        double TotalVelX = -VelX + omega;
+        double TotalVelY = -VelY + omega;
 
-        double kTimer = Math.max(1, Math.min(2, map(turretDistance_hub, 0.7, 7, 1, 2))) ; //1 e 1,75 good
+        double kTimer = Math.max(1, Math.min(2, map(robotDistance, 0.7, 7, 1, 2))) ; //1 e 1,75 good
         double futureX = TotalVelX * kTimer;
         double futurey = TotalVelY * kTimer;
+
+        /* Não tirei para não zoar o metodo da torreta do MIRAGE */
         Translation2d TurretFuture = turretOffSet.plus(new Translation2d(futureX, futurey));
-        
         Translation2d turret_toHub_FUTURE = pose_Hub.minus(TurretFuture);
         Rotation2d angTurretToHub_FUTURE = turret_toHub_FUTURE.getAngle();
         Rotation2d turretTargetAngle_FUTURE = angTurretToHub_FUTURE.minus(Robot_Yaw);
         turretTargetAngle_FUTURE = turretTargetAngle_FUTURE.minus(Rotation2d.fromDegrees(180));
-        
         double distance_FUTURE = turret_toHub_FUTURE.getNorm();
+        /* Não tirei para não zoar o metodo da torreta do MIRAGE */
 
-        /*  Modifications   */
         Translation2d delta = pose_Hub.minus(robot_pose);
         Rotation2d targetAngle = delta.getAngle();
 
@@ -319,26 +326,13 @@ public class Turret extends Command {
         OmegaCmd = kP * error;
 
         OmegaCmd = MathUtil.clamp(OmegaCmd, -3, 3);
-        // ProfiledPIDController thetaController = new ProfiledPIDController(1, 0, 0,
-        // new TrapezoidProfile.Constraints(6, 10));
-        // thetaController.enableContinuousInput(-Math.PI, Math.PI);
 
         Translation2d roboFuture = robot_pose.plus(new Translation2d(futureX, futurey));
         Translation2d robotToHUB = pose_Hub.minus(roboFuture);
         Rotation2d robotAngleFuture = robotToHUB.getAngle();
-        // Rotation2d turretTargetAngle_FUTURE = angTurretToHub_FUTURE.minus(Robot_Yaw);
-        // turretTargetAngle_FUTURE = turretTargetAngle_FUTURE.minus(Rotation2d.fromDegrees(180));
-        
-        // double distance_FUTURE = turret_toHub_FUTURE.getNorm();
 
-        // speeds = ChassisSpeeds.fromFieldRelativeSpeeds(
-        //     control.getLeftY()*(-1), control.getLeftX()*(-1), OmegaCmd, Robot_Yaw);
-        
-        // swerve.drive(speeds);
-        
-        NetworkTableInstance.getDefault().getTable("ROBOT").getEntry("Aling").setDoubleArray(new double[] {
+        NetworkTableInstance.getDefault().getTable("ROBOT").getEntry("RobotFuture").setDoubleArray(new double[] {
         roboFuture.getX(), roboFuture.getY(), robotAngleFuture.getRadians()});
-
         /* FIM MODIFICAÇÕES */
 
         NetworkTableInstance.getDefault().getTable("ROBOT").getEntry("OdometryRobot").setDoubleArray(new double[] {
