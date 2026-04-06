@@ -315,15 +315,13 @@ public class Turret extends Command {
         Rotation2d targetAngle = delta.getAngle();
 
         double error = MathUtil.angleModulus(targetAngle.minus(Robot_Yaw.plus(new Rotation2d(Math.PI))).getRadians());
-        if(error >= 0.5) error = 0;
-
-        double kP = 0.075;
+        double kP = 1;
         OmegaCmd = kP * error;
 
         OmegaCmd = MathUtil.clamp(OmegaCmd, -3, 3);
-        ProfiledPIDController thetaController = new ProfiledPIDController(1, 0, 0,
-        new TrapezoidProfile.Constraints(6, 10));
-        thetaController.enableContinuousInput(-Math.PI, Math.PI);
+        // ProfiledPIDController thetaController = new ProfiledPIDController(1, 0, 0,
+        // new TrapezoidProfile.Constraints(6, 10));
+        // thetaController.enableContinuousInput(-Math.PI, Math.PI);
 
         Translation2d roboFuture = robot_pose.plus(new Translation2d(futureX, futurey));
         Translation2d robotToHUB = pose_Hub.minus(roboFuture);
@@ -333,8 +331,8 @@ public class Turret extends Command {
         
         // double distance_FUTURE = turret_toHub_FUTURE.getNorm();
 
-        speeds = ChassisSpeeds.fromFieldRelativeSpeeds(
-            control.getLeftY()*(-1), control.getLeftX()*(-1), OmegaCmd, Robot_Yaw);
+        // speeds = ChassisSpeeds.fromFieldRelativeSpeeds(
+        //     control.getLeftY()*(-1), control.getLeftX()*(-1), OmegaCmd, Robot_Yaw);
         
         // swerve.drive(speeds);
         
@@ -382,6 +380,9 @@ public class Turret extends Command {
 
     public ChassisSpeeds getSpeeds() {
         return speeds;
+    }
+    public double getOmega(){
+        return OmegaCmd;
     }
 
     private static double calculatePID(double kP, double setpoint, double measurement, double baseOutput, double outputMin, double outputMax) {

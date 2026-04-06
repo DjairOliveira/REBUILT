@@ -66,6 +66,7 @@ public class Intake {
     static public double getIntake(){
         return mIntake.getEncoder().getPosition();
     }
+    
     static public double getIntakeSpeed(){
         return mIntake.getEncoder().getVelocity();
     }

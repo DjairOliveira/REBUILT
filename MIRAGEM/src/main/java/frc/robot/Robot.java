@@ -150,6 +150,8 @@ public class Robot extends LoggedRobot
     }
 
     Logger.start();
+
+    teleopStartTime = Timer.getFPGATimestamp();
   }
 // roborio-9168-frc.local lvuser@roborio-XXXX:~$
   /**
@@ -167,6 +169,8 @@ public class Robot extends LoggedRobot
     // and running subsystem periodic() methods.  This must be called from the robot's periodic
     // block in order for anything in the Command-based framework to work.
     CommandScheduler.getInstance().run();
+
+    elapsedTime = Timer.getFPGATimestamp() - teleopStartTime;
 
     pose = NetworkTableInstance.getDefault().getTable("SmartDashboard").getSubTable("Field").getEntry("Robot").getDoubleArray(new double[3]);
     NetworkTableInstance.getDefault().getTable("ROBOT").getEntry("OdometryRobot").setDoubleArray(new double[] {
@@ -263,7 +267,7 @@ public class Robot extends LoggedRobot
       CommandScheduler.getInstance().cancelAll();
     }
 
-    teleopStartTime = 0;
+    // teleopStartTime = 0;
     elapsedTime = 0;
   }
 
@@ -273,7 +277,7 @@ public class Robot extends LoggedRobot
   @Override
   public void teleopPeriodic()
   {
-    elapsedTime = Timer.getFPGATimestamp() - teleopStartTime;
+    
   }
 
   @Override

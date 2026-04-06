@@ -36,29 +36,26 @@ import swervelib.SwerveInputStream;
  */
 public class RobotContainer
 {
-  public final double inclinationMax = 6;
   final CommandXboxController Cmdriver = new CommandXboxController(0);
   public XboxController driver = new XboxController(0);
   
-  public final SwerveSubsystem drivebase  = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(), "swerve/MK4i"));
+  public final SwerveSubsystem drivebase = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(), "swerve/MK4i"));
   private Turret mTurret = new Turret(drivebase);
   private Climber mClimber = new Climber(drivebase);
 
-  double shooterMov=0;
-
-  private int intakectn=0;
+  private int intakectn = 0;
   private final SendableChooser<Command> autoChooser;
 
   /**
    * Converts driver input into a field-relative ChassisSpeeds that is controlled by angular velocity.
    */
-  SwerveInputStream driveAngularVelocityJose = SwerveInputStream.of(drivebase.getSwerveDrive(),
-                                                                () -> Cmdriver.getLeftY() * -normalized(Robot.velocityRobot) * Cmdriver.getRightTriggerAxis(),
-                                                                () -> Cmdriver.getLeftX() * -normalized(Robot.velocityRobot) * Cmdriver.getRightTriggerAxis())
-                                                            .withControllerRotationAxis(() -> (Cmdriver.getRightX() * -normalized(Robot.velocityRobot)  * 0.5))
-                                                            .deadband(OperatorConstants.DEADBAND)
-                                                            .scaleTranslation(0.8)
-                                                            .allianceRelativeControl(true);
+  // SwerveInputStream driveAngularVelocityJose = SwerveInputStream.of(drivebase.getSwerveDrive(),
+  //                                                               () -> Cmdriver.getLeftY() * -normalized(Robot.velocityRobot) * Cmdriver.getRightTriggerAxis(),
+  //                                                               () -> Cmdriver.getLeftX() * -normalized(Robot.velocityRobot) * Cmdriver.getRightTriggerAxis())
+  //                                                           .withControllerRotationAxis(() -> (Cmdriver.getRightX() * -normalized(Robot.velocityRobot)  * 0.5))
+  //                                                           .deadband(OperatorConstants.DEADBAND)
+  //                                                           .scaleTranslation(0.8)
+  //                                                           .allianceRelativeControl(true);
 
   SwerveInputStream driveAngularVelocityYuri = SwerveInputStream.of(drivebase.getSwerveDrive(),
                                                                 () -> Cmdriver.getLeftY() * -normalized(Robot.velocityRobot),
@@ -70,12 +67,14 @@ public class RobotContainer
 
   SwerveInputStream shooterDrive = SwerveInputStream.of(
       drivebase.getSwerveDrive(),
-      () -> mTurret.getSpeeds().vxMetersPerSecond,
-      () -> mTurret.getSpeeds().vyMetersPerSecond).withControllerRotationAxis(
-      () -> mTurret.getSpeeds().omegaRadiansPerSecond
-  );
+      () -> Cmdriver.getLeftY() * (-1),
+      () -> Cmdriver.getLeftX() * (-1)).withControllerRotationAxis(
+      () -> mTurret.getOmega())
+      .deadband(OperatorConstants.DEADBAND)
+      .scaleTranslation(0.8)
+      .allianceRelativeControl(true);
 
-  Command driveMode = null;
+  // Command driveMode = null;
 
   public RobotContainer()
   {
@@ -97,9 +96,9 @@ public class RobotContainer
       Commands.runOnce(()-> Turret.setEngatilha(0)),
       Commands.runOnce(()-> Intake.setIntakeSpeed(1))));
 
-    // new EventTrigger("TURRET_OFF").onTrue(new SequentialCommandGroup(
-    //   Commands.runOnce(() -> Turret.end()),
-    //   Commands.runOnce(() -> mTurret.cancel())));
+    new EventTrigger("TURRET_OFF").onTrue(new SequentialCommandGroup(
+      Commands.runOnce(() -> mTurret.end()),
+      Commands.runOnce(() -> mTurret.cancel())));
 
     new EventTrigger("TURRET_MOVE").onTrue(new Turret(drivebase));
       
@@ -123,10 +122,10 @@ public class RobotContainer
   private void configureBindings()
   {
     // Command driverJose = drivebase.driveFieldOriented(driveAngularVelocityJose);
-    // Command driverYuri = drivebase.driveFieldOriented(driveAngularVelocityYuri);
 
     BooleanSupplier  driverShooter = ()-> driver.getLeftBumperButtonPressed();
-    BooleanSupplier driverYuri = ()-> driver.getLeftBumperButtonReleased();
+    BooleanSupplier driverYuri = ()-> driver.getLeftBumperButtonReleased() || Robot.elapsedTime < 1;
+    Command driveMode = drivebase.driveFieldOriented(driveAngularVelocityYuri);
 
     activateCommandOnCondition(driverYuri, driveMode = drivebase.driveFieldOriented(driveAngularVelocityYuri));
     activateCommandOnCondition(driverShooter, driveMode = drivebase.driveFieldOriented(shooterDrive));
