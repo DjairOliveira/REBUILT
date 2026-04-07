@@ -299,11 +299,11 @@ public class Turret extends Command {
 
         double robotDistance = robot_pose.getDistance(pose_Hub);
 
-        double omega = robo_speed.omegaRadiansPerSecond;
+        // double omega = robo_speed.omegaRadiansPerSecond;
         // double rotVelX = -omega * robot_pose.getY();
         // double rotVelY = omega * robot_pose.getX();
-        double TotalVelX = -VelX + omega;
-        double TotalVelY = -VelY + omega;
+        double TotalVelX = -VelX;
+        double TotalVelY = -VelY;
 
         double kTimer = Math.max(1, Math.min(2, map(robotDistance, 0.7, 7, 1, 2))) ; //1 e 1,75 good
         double futureX = TotalVelX * kTimer;

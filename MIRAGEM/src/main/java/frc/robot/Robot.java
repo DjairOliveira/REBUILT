@@ -16,11 +16,14 @@ import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.TimedRobot;
 import edu.wpi.first.wpilibj.Timer;
+import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.shuffleboard.BuiltInWidgets;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
+import edu.wpi.first.wpilibj.simulation.XboxControllerSim;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.subsystems.Climber;
+import frc.robot.subsystems.ElevadorSim;
 import frc.robot.subsystems.Intake;
 import frc.robot.subsystems.Turret;
 
@@ -45,6 +48,8 @@ public class Robot extends LoggedRobot
 
   public static double linearVelocity=0;
 
+  private XboxController mControl = new XboxController(0);
+
   public static final Pigeon2 mPigeon2 = new Pigeon2(13);
 
   private Timer disabledTimer;
@@ -64,6 +69,8 @@ public class Robot extends LoggedRobot
   public static GenericEntry Driver;
 
   public static double[] pose = new double[3];
+
+  private ElevadorSim mElevadorSim = new ElevadorSim();
 
   public Robot()
   {
@@ -221,6 +228,7 @@ public class Robot extends LoggedRobot
       disabledTimer.stop();
       disabledTimer.reset();
     }
+    
   }
 
   /**
@@ -309,6 +317,12 @@ public class Robot extends LoggedRobot
   @Override
   public void simulationPeriodic()
   {
+    if (mControl.getAButtonPressed()) mElevadorSim.setTargetHeight(0.0);
+    if (mControl.getBButtonPressed()) mElevadorSim.setTargetHeight(0.5);
+    if (mControl.getXButtonPressed()) mElevadorSim.setTargetHeight(1.0);
+    if (mControl.getYButtonPressed()) mElevadorSim.setTargetHeight(1.5);
+    mElevadorSim.setTargetAngle(70 * mControl.getRightTriggerAxis());
+
   }
 
   void initializeRobot(){
