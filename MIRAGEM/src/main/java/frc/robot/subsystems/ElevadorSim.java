@@ -1,6 +1,7 @@
 package frc.robot.subsystems;
 
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
+import frc.robot.Robot;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.util.Color8Bit;
 import edu.wpi.first.wpilibj.RobotBase;
@@ -143,10 +144,15 @@ public class ElevadorSim extends SubsystemBase {
 
         Logger.recordOutput("RobotPose", new Pose2d());
         Logger.recordOutput("ZeroedComponentPoses", new Pose3d[] {new Pose3d()});
-        Logger.recordOutput("FinalComponentPoses", new Pose3d[] {new Pose3d(
-            -0.1535, -0.1425-0.085, 0.335, new Rotation3d(0.0, 0, Turret.getAngleTurretSim()))});
+        /* AGROBOT */
+        // Logger.recordOutput("FinalComponentPoses", new Pose3d[] {new Pose3d(
+        //     -0.1535, -0.1425-0.085, 0.335, new Rotation3d(0.0, 0, Turret.getAngleTurretSim()))});
 
-
+        Logger.recordOutput("SubSystemHood", new Pose3d[] {new Pose3d(
+            -0.22, 0, 0.43, new Rotation3d(0.0, Math.toRadians(newAngle), Math.PI))});
+        
+        Logger.recordOutput("SubSystemIntake", new Pose3d[] {new Pose3d(
+            Robot.auxiliar.getDouble(0), Robot.setInclina.getDouble(0), Robot.velocityTiro.getDouble(0), new Rotation3d(0.0, Math.toRadians(newAngle), 0))});
 
         SmartDashboard.putNumber("ElevatorHeight", currentHeight);
         SmartDashboard.putNumber("ElevatorAngle", newAngle);
