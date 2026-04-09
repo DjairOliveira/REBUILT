@@ -127,8 +127,8 @@ public class RobotContainer
     BooleanSupplier driverYuri = ()-> driver.getLeftBumperButtonReleased() || Robot.elapsedTime < 1;
     Command driveMode = drivebase.driveFieldOriented(driveAngularVelocityYuri);
 
-    activateCommandOnCondition(driverYuri, driveMode = drivebase.driveFieldOriented(driveAngularVelocityYuri));
-    activateCommandOnCondition(driverShooter, driveMode = drivebase.driveFieldOriented(shooterDrive));
+    // activateCommandOnCondition(driverYuri, driveMode = drivebase.driveFieldOriented(driveAngularVelocityYuri));
+    // activateCommandOnCondition(driverShooter, driveMode = drivebase.driveFieldOriented(shooterDrive));
 
     drivebase.setDefaultCommand(driveMode);
     Cmdriver.start().onTrue((Commands.runOnce(drivebase::zeroGyro)));

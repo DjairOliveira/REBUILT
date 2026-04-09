@@ -321,7 +321,7 @@ public class Robot extends LoggedRobot
     if (mControl.getBButtonPressed()) mElevadorSim.setTargetHeight(0.5);
     if (mControl.getXButtonPressed()) mElevadorSim.setTargetHeight(1.0);
     if (mControl.getYButtonPressed()) mElevadorSim.setTargetHeight(1.5);
-    mElevadorSim.setTargetAngle(70 * mControl.getRightTriggerAxis());
+    mElevadorSim.setTargetAngle(360 * mControl.getRightTriggerAxis());
 
   }
 

@@ -4,6 +4,7 @@ import edu.wpi.first.wpilibj2.command.SubsystemBase;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.util.Color8Bit;
 import edu.wpi.first.wpilibj.RobotBase;
+import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.math.system.plant.DCMotor;
 import edu.wpi.first.wpilibj.simulation.ElevatorSim;
@@ -11,8 +12,14 @@ import edu.wpi.first.wpilibj.simulation.ElevatorSim;
 import edu.wpi.first.wpilibj.smartdashboard.Mechanism2d;
 import edu.wpi.first.wpilibj.smartdashboard.MechanismRoot2d;
 import edu.wpi.first.wpilibj.smartdashboard.MechanismLigament2d;
+
+import org.littletonrobotics.junction.Logger;
+
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Pose3d;
+import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.trajectory.TrapezoidProfile;
 
 public class ElevadorSim extends SubsystemBase {
@@ -46,6 +53,7 @@ public class ElevadorSim extends SubsystemBase {
     );
 
     private XboxController control = new XboxController(0);
+    // private Turret mTurret = new Turret(null);
 
     private TrapezoidProfile.State goal;
     private TrapezoidProfile.State setpoint;
@@ -131,6 +139,17 @@ public class ElevadorSim extends SubsystemBase {
         double newAngle = currentAngle + outputAngle * 0.2;
 
         elevatorLigament.setAngle(newAngle);
+
+
+        Logger.recordOutput("RobotPose", new Pose2d());
+        Logger.recordOutput("ZeroedComponentPoses", new Pose3d[] {new Pose3d()});
+        Logger.recordOutput("FinalComponentPoses", new Pose3d[] {new Pose3d(
+            -0.1535, -0.1425-0.085, 0.335, new Rotation3d(0.0, 0, Turret.getAngleTurretSim()))});
+
+
+
+        SmartDashboard.putNumber("ElevatorHeight", currentHeight);
+        SmartDashboard.putNumber("ElevatorAngle", newAngle);
 
     }
 }

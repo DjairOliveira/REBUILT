@@ -74,7 +74,8 @@ public class Turret extends Command {
 
     public static double[] pose = new double[3];
 
-    public static double OmegaCmd=0;
+    public static double OmegaCmd = 0;
+    public static double angleTurretSim = 0;
 
     public ChassisSpeeds speeds;
 
@@ -249,6 +250,17 @@ public class Turret extends Command {
     }
 
     public static double Para_bola(double distturrettohub) {
+        /*  AGROBOT     */
+        // double delta_T = 0, a_T = 0, b_T = 0, c_T = 1.105;
+        // double tan_angle_T = 0;
+
+        // a_T = (Math.pow(distturrettohub, 2) / 9.22);
+        // b_T = -distturrettohub;
+        // delta_T = (Math.pow(b_T, 2) - 4 * a_T * c_T);
+        // tan_angle_T = (distturrettohub + Math.sqrt(delta_T)) / (2 * a_T);
+        // return Math.toDegrees(Math.atan(tan_angle_T));
+
+        /* MUTUM X */
         double delta_T = 0, a_T = 0, b_T = 0, c_T = 1.105;
         double tan_angle_T = 0;
 
@@ -274,48 +286,48 @@ public class Turret extends Command {
         Translation2d pose_Hub = new Translation2d(Target_X , Target_Y);
         Translation2d offsetTurret = new Translation2d(-0.1425, -0.1535);
         Translation2d turretOffSet = robot_pose.plus(offsetTurret.rotateBy(Robot_Yaw));
-        // double turretDistance_hub = turretOffSet.getDistance(pose_Hub);
+        double turretDistance_hub = turretOffSet.getDistance(pose_Hub);
 
-        // double omega = robo_speed.omegaRadiansPerSecond;
-        // Translation2d turretOffsetField = offsetTurret.rotateBy(Robot_Yaw);
-        // double rotVelX = -omega * turretOffsetField.getY();
-        // double rotVelY = omega * turretOffsetField.getX();
-        // double TotalVelX = -VelX + rotVelX;
-        // double TotalVelY = -VelY + rotVelY;
+        double omega = robo_speed.omegaRadiansPerSecond;
+        Translation2d turretOffsetField = offsetTurret.rotateBy(Robot_Yaw);
+        double rotVelX = -omega * turretOffsetField.getY();
+        double rotVelY = omega * turretOffsetField.getX();
+        double TotalVelX = -VelX + rotVelX;
+        double TotalVelY = -VelY + rotVelY;
 
-        // double kTimer = Math.max(1, Math.min(2, map(turretDistance_hub, 0.7, 7, 1, 2))) ; //1 e 1,75 good
-        // double futureX = TotalVelX * kTimer;
-        // double futurey = TotalVelY * kTimer;
-        // Translation2d TurretFuture = turretOffSet.plus(new Translation2d(futureX, futurey));
-        
-        // Translation2d turret_toHub_FUTURE = pose_Hub.minus(TurretFuture);
-        // Rotation2d angTurretToHub_FUTURE = turret_toHub_FUTURE.getAngle();
-        // Rotation2d turretTargetAngle_FUTURE = angTurretToHub_FUTURE.minus(Robot_Yaw);
-        // turretTargetAngle_FUTURE = turretTargetAngle_FUTURE.minus(Rotation2d.fromDegrees(180));
-        
-        // double distance_FUTURE = turret_toHub_FUTURE.getNorm();
-
-        /*  Modifications  Chassi Alinha */
-
-        double robotDistance = robot_pose.getDistance(pose_Hub);
-
-        // double omega = robo_speed.omegaRadiansPerSecond;
-        // double rotVelX = -omega * robot_pose.getY();
-        // double rotVelY = omega * robot_pose.getX();
-        double TotalVelX = -VelX;
-        double TotalVelY = -VelY;
-
-        double kTimer = Math.max(1, Math.min(2, map(robotDistance, 0.7, 7, 1, 2))) ; //1 e 1,75 good
+        double kTimer = Math.max(1, Math.min(2, map(turretDistance_hub, 0.7, 7, 1, 2))) ; //1 e 1,75 good
         double futureX = TotalVelX * kTimer;
         double futurey = TotalVelY * kTimer;
-
-        /* Não tirei para não zoar o metodo da torreta do MIRAGE */
         Translation2d TurretFuture = turretOffSet.plus(new Translation2d(futureX, futurey));
+        
         Translation2d turret_toHub_FUTURE = pose_Hub.minus(TurretFuture);
         Rotation2d angTurretToHub_FUTURE = turret_toHub_FUTURE.getAngle();
         Rotation2d turretTargetAngle_FUTURE = angTurretToHub_FUTURE.minus(Robot_Yaw);
         turretTargetAngle_FUTURE = turretTargetAngle_FUTURE.minus(Rotation2d.fromDegrees(180));
+        
         double distance_FUTURE = turret_toHub_FUTURE.getNorm();
+
+        /*  Modifications  Chassi Alinha */
+
+        // double robotDistance = robot_pose.getDistance(pose_Hub);
+
+        // // double omega = robo_speed.omegaRadiansPerSecond;
+        // // double rotVelX = -omega * robot_pose.getY();
+        // // double rotVelY = omega * robot_pose.getX();
+        // double TotalVelX = -VelX;
+        // double TotalVelY = -VelY;
+
+        // double kTimer = Math.max(1, Math.min(2, map(robotDistance, 0.7, 7, 1, 2))) ; //1 e 1,75 good
+        // double futureX = TotalVelX * kTimer;
+        // double futurey = TotalVelY * kTimer;
+
+        // /* Não tirei para não zoar o metodo da torreta do MIRAGE */
+        // Translation2d TurretFuture = turretOffSet.plus(new Translation2d(futureX, futurey));
+        // Translation2d turret_toHub_FUTURE = pose_Hub.minus(TurretFuture);
+        // Rotation2d angTurretToHub_FUTURE = turret_toHub_FUTURE.getAngle();
+        // Rotation2d turretTargetAngle_FUTURE = angTurretToHub_FUTURE.minus(Robot_Yaw);
+        // turretTargetAngle_FUTURE = turretTargetAngle_FUTURE.minus(Rotation2d.fromDegrees(180));
+        // double distance_FUTURE = turret_toHub_FUTURE.getNorm();
         /* Não tirei para não zoar o metodo da torreta do MIRAGE */
 
         Translation2d delta = pose_Hub.minus(robot_pose);
@@ -366,10 +378,12 @@ public class Turret extends Command {
         Logger.recordOutput("Turret/Target", target);
         Logger.recordOutput("Turret/turretTargetAngle_FUTURE", turretTargetAngle_FUTURE);
 
+        angleTurretSim = turret_toHub_FUTURE.getAngle().getRadians() - (Robot_Yaw.getRadians() + Math.PI);
+
         return new double[] {
             distance_FUTURE, MathUtil.inputModulus(turretTargetAngle_FUTURE.getDegrees(), -165, 180),
             robot_pose.getX(), robot_pose.getY(), Robot_Yaw.getDegrees(),
-            turretOffSet.getX(), turretOffSet.getY()};
+            turretOffSet.getX(), turretOffSet.getY(), };
     }
 
     public ChassisSpeeds getSpeeds() {
@@ -377,6 +391,10 @@ public class Turret extends Command {
     }
     public double getOmega(){
         return OmegaCmd;
+    }
+
+    public static double getAngleTurretSim(){
+        return angleTurretSim;
     }
 
     private static double calculatePID(double kP, double setpoint, double measurement, double baseOutput, double outputMin, double outputMax) {
