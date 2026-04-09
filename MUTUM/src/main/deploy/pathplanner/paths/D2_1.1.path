@@ -1,0 +1,67 @@
+{
+  "version": "2025.0",
+  "waypoints": [
+    {
+      "anchor": {
+        "x": 1.336519373237985,
+        "y": 4.941541148027325
+      },
+      "prevControl": null,
+      "nextControl": {
+        "x": 1.312528992492736,
+        "y": 4.6755045221149
+      },
+      "isLocked": false,
+      "linkedName": "D2_1.0E"
+    },
+    {
+      "anchor": {
+        "x": 1.083422898541857,
+        "y": 4.354057494816447
+      },
+      "prevControl": {
+        "x": 1.2558366916453059,
+        "y": 4.5350919775750675
+      },
+      "nextControl": null,
+      "isLocked": false,
+      "linkedName": null
+    }
+  ],
+  "rotationTargets": [],
+  "constraintZones": [],
+  "pointTowardsZones": [],
+  "eventMarkers": [
+    {
+      "name": "TURRET_OFF",
+      "waypointRelativePos": 0.0,
+      "endWaypointRelativePos": null,
+      "command": null
+    },
+    {
+      "name": "CLIMBER_PUSH",
+      "waypointRelativePos": 1.0,
+      "endWaypointRelativePos": null,
+      "command": null
+    }
+  ],
+  "globalConstraints": {
+    "maxVelocity": 1.0,
+    "maxAcceleration": 1.0,
+    "maxAngularVelocity": 540.0,
+    "maxAngularAcceleration": 720.0,
+    "nominalVoltage": 12.0,
+    "unlimited": false
+  },
+  "goalEndState": {
+    "velocity": 0,
+    "rotation": 180.0
+  },
+  "reversed": false,
+  "folder": "DEPOT",
+  "idealStartingState": {
+    "velocity": 0,
+    "rotation": 166.44648145627107
+  },
+  "useDefaultConstraints": false
+}
