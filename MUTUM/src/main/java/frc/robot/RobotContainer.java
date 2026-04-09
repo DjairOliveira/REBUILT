@@ -22,7 +22,7 @@ import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.subsystems.Climber;
 import frc.robot.subsystems.Intake;
-import frc.robot.subsystems.Turret;
+import frc.robot.subsystems.Hood;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import java.io.File;
 import java.util.function.BooleanSupplier;
@@ -40,7 +40,7 @@ public class RobotContainer
   public XboxController driver = new XboxController(0);
   
   public final SwerveSubsystem drivebase = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(), "swerve/MK4i"));
-  private Turret mTurret = new Turret(drivebase);
+  private Hood mTurret = new Hood(drivebase);
   private Climber mClimber = new Climber(drivebase);
 
   private int intakectn = 0;
@@ -57,7 +57,7 @@ public class RobotContainer
   //                                                           .scaleTranslation(0.8)
   //                                                           .allianceRelativeControl(true);
 
-  SwerveInputStream driveAngularVelocityYuri = SwerveInputStream.of(drivebase.getSwerveDrive(),
+  SwerveInputStream driveAngularVelocity = SwerveInputStream.of(drivebase.getSwerveDrive(),
                                                                 () -> Cmdriver.getLeftY() * -normalized(Robot.velocityRobot),
                                                                 () -> Cmdriver.getLeftX() * -normalized(Robot.velocityRobot))
                                                             .withControllerRotationAxis(() -> (Cmdriver.getRightX() * -normalized(Robot.velocityRobot)) * 0.8)
@@ -88,21 +88,21 @@ public class RobotContainer
       Commands.runOnce(()-> Intake.setIntakeSpeed(1)),
       Commands.runOnce(()-> Intake.setSpeedEsteira(0)),
       Commands.runOnce(()-> Intake.setSpeedOrganizador(-0.08)),
-      Commands.runOnce(()-> Turret.setEngatilha(-0.05))));
+      Commands.runOnce(()-> Hood.setIndex(-0.05))));
       
     NamedCommands.registerCommand("INTAKE_OFF", new SequentialCommandGroup(
       Commands.runOnce(()-> Intake.setInclina(-14,0.3,0.25)),
       new InstantCommand(()-> Intake.setSpeedOrganizador(0)),
-      Commands.runOnce(()-> Turret.setEngatilha(0)),
+      Commands.runOnce(()-> Hood.setIndex(0)),
       Commands.runOnce(()-> Intake.setIntakeSpeed(1))));
 
     new EventTrigger("TURRET_OFF").onTrue(new SequentialCommandGroup(
       Commands.runOnce(() -> mTurret.end()),
       Commands.runOnce(() -> mTurret.cancel())));
 
-    new EventTrigger("TURRET_MOVE").onTrue(new Turret(drivebase));
+    new EventTrigger("TURRET_MOVE").onTrue(new Hood(drivebase));
       
-    NamedCommands.registerCommand("TURRET_HUB", new Turret(drivebase));
+    NamedCommands.registerCommand("TURRET_HUB", new Hood(drivebase));
 
     new EventTrigger("CLIMBER_UP").onTrue(Commands.runOnce(() -> mClimber.setPosition(-350, 1)));
     new EventTrigger("CLIMBER_PUSH").onTrue(Commands.runOnce(() -> mClimber.setPosition(0, 1)));
@@ -124,11 +124,11 @@ public class RobotContainer
     // Command driverJose = drivebase.driveFieldOriented(driveAngularVelocityJose);
 
     BooleanSupplier  driverShooter = ()-> driver.getLeftBumperButtonPressed();
-    BooleanSupplier driverYuri = ()-> driver.getLeftBumperButtonReleased() || Robot.elapsedTime < 1;
-    Command driveMode = drivebase.driveFieldOriented(driveAngularVelocityYuri);
+    BooleanSupplier defaultMove = ()-> driver.getLeftBumperButtonReleased() || Robot.elapsedTime < 1;
+    Command driveMode = drivebase.driveFieldOriented(driveAngularVelocity);
 
-    // activateCommandOnCondition(driverYuri, driveMode = drivebase.driveFieldOriented(driveAngularVelocityYuri));
-    // activateCommandOnCondition(driverShooter, driveMode = drivebase.driveFieldOriented(shooterDrive));
+    activateCommandOnCondition(defaultMove, driveMode = drivebase.driveFieldOriented(driveAngularVelocity));
+    activateCommandOnCondition(driverShooter, driveMode = drivebase.driveFieldOriented(shooterDrive));
 
     drivebase.setDefaultCommand(driveMode);
     Cmdriver.start().onTrue((Commands.runOnce(drivebase::zeroGyro)));
@@ -147,7 +147,7 @@ public class RobotContainer
       Commands.runOnce(()-> Intake.setIntakeSpeed(1)),
       Commands.runOnce(()-> Intake.setSpeedEsteira(0)),
       Commands.runOnce(()-> Intake.setSpeedOrganizador(-0.08)),
-      Commands.runOnce(()-> Turret.setEngatilha(-0.05))));
+      Commands.runOnce(()-> Hood.setIndex(-0.05))));
 
     // activateCommandOnCondition(()-> intakectn==2, Commands.runOnce(()-> Intake.setIntakeSpeed(0)));
 
@@ -161,7 +161,7 @@ public class RobotContainer
     activateCommandOnCondition(()-> intakectn>=2, new SequentialCommandGroup(
       Commands.runOnce(()-> Intake.setInclina(0,0.3,0.25)),
       new InstantCommand(()-> Intake.setSpeedOrganizador(0)),
-      Commands.runOnce(()-> Turret.setEngatilha(0)),
+      Commands.runOnce(()-> Hood.setIndex(0)),
       Commands.runOnce(()-> Intake.setSpeedEsteira(0)),
       Commands.runOnce(()-> Intake.setIntakeSpeed(1)),
       new InstantCommand(()-> intakectn=0)));
@@ -172,25 +172,24 @@ public class RobotContainer
 
     /********** TURRET **************************/
     Cmdriver.b().onTrue(new SequentialCommandGroup(
-      Commands.runOnce(() -> Turret.stopSpeed()),
-      Commands.runOnce(() -> Turret.stopEngatilhar()),
+      Commands.runOnce(() -> Hood.stopShooterSpeed()),
+      Commands.runOnce(() -> Hood.stopIndex()),
       Commands.runOnce(() -> Intake.stopOrganizador()),
-      Commands.runOnce(() -> Intake.setSpeedEsteira(0)),
-      Commands.runOnce(() -> Turret.setHorizontal(0))));
+      Commands.runOnce(() -> Intake.setSpeedEsteira(0))));
 
     Cmdriver.leftBumper().whileTrue(mTurret.repeatedly());
     Cmdriver.leftBumper().onFalse(Commands.runOnce(() -> mTurret.end()));
 
     Cmdriver.rightBumper().whileTrue(new SequentialCommandGroup(
-      Commands.runOnce(() -> Turret.setEngatilha(0.4)),
-      Commands.runOnce(() -> Turret.setShotter(0.4)),
+      Commands.runOnce(() -> Hood.setIndex(0.4)),
+      Commands.runOnce(() -> Hood.setShooter(0.4)),
       Commands.runOnce(() -> Intake.setSpeedOrganizador(0.2)),
       Commands.runOnce(() -> Intake.setSpeedEsteira(0.2)),
       Commands.runOnce(() -> Intake.setIntakeSpeed(1))));
 
     Cmdriver.rightBumper().onFalse(new SequentialCommandGroup(
-      Commands.runOnce(() -> Turret.setEngatilha(0)),
-      Commands.runOnce(() -> Turret.setShotter(0)),
+      Commands.runOnce(() -> Hood.setIndex(0)),
+      Commands.runOnce(() -> Hood.setShooter(0)),
       Commands.runOnce(() -> Intake.setSpeedOrganizador(0)),
       Commands.runOnce(() -> Intake.setSpeedEsteira(0)),
       Commands.runOnce(() -> Intake.setIntakeSpeed(0))));

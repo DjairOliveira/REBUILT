@@ -25,7 +25,7 @@ import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.subsystems.Climber;
 import frc.robot.subsystems.ElevadorSim;
 import frc.robot.subsystems.Intake;
-import frc.robot.subsystems.Turret;
+import frc.robot.subsystems.Hood;
 
 import org.littletonrobotics.junction.Logger;
 import org.littletonrobotics.junction.LoggedRobot;
@@ -321,10 +321,10 @@ public class Robot extends LoggedRobot
     if (mControl.getBButtonPressed()) mElevadorSim.setTargetHeight(0.5);
     if (mControl.getXButtonPressed()) mElevadorSim.setTargetHeight(1.0);
     if (mControl.getYButtonPressed()) mElevadorSim.setTargetHeight(1.5);
-    mElevadorSim.setSubShooter(Turret.map(mControl.getRightTriggerAxis(), 0, 1, -20, 20));
+    mElevadorSim.setSubShooter(Hood.map(mControl.getRightTriggerAxis(), 0, 1, -20, 20));
     mElevadorSim.setSubIntake((120 * mControl.getRightTriggerAxis()) - 120);
     mElevadorSim.setSubGaveta(0.342 * mControl.getRightTriggerAxis());
-    mElevadorSim.setSubClimber(Turret.map(mControl.getRightTriggerAxis(), 0, 1, -0.1, 0.2));
+    mElevadorSim.setSubClimber(Hood.map(mControl.getRightTriggerAxis(), 0, 1, -0.1, 0.2));
   }
 
   void initializeRobot(){
@@ -332,19 +332,16 @@ public class Robot extends LoggedRobot
     // Intake.mIntake.setPosition(0);
     Intake.mInclina.setPosition(0);
     Intake.mOrganizador.getEncoder().setPosition(0);
-    Turret.mShooter.setPosition(0);
-    Turret.mShooterFlw.setPosition(0);
-    Turret.mVertical.getEncoder().setPosition(0);
-    Turret.mHorizontal.getEncoder().setPosition(0);
-    Turret.mShooter.setPosition(0);
+    Hood.mShooterL.setPosition(0);
+    Hood.mShooterR.setPosition(0);
+    Hood.mHood.getEncoder().setPosition(0);
+    Hood.mShooterL.setPosition(0);
     mPigeon2.setYaw(0);
     Climber.mclimber.setPosition(0);
 
-    Turret.configHorizontal(0.02, -0.5, 0.5);
-    Turret.configVertical(0.1, -0.1, 0.2);
-    Turret.configEngatilha(NeutralModeValue.Coast);
-    Turret.configShooter(NeutralModeValue.Coast);
+    Hood.configHood(0.1, -0.1, 0.2);
+    Hood.configIndex(NeutralModeValue.Coast);
+    Hood.configShooter(NeutralModeValue.Coast);
     Intake.configInclina(0.15, -1, 1, NeutralModeValue.Brake);
   }
-
 }
