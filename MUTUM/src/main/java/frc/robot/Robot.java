@@ -186,18 +186,15 @@ public class Robot extends LoggedRobot
       Math.toRadians(pose[2])
     });
 
-    NetworkTableInstance.getDefault().getTable("PERIODIC INTAKE").getEntry("Inclina Position").setDouble(Intake.getInclina());
-    NetworkTableInstance.getDefault().getTable("PERIODIC INTAKE").getEntry("Coletor Position").setDouble(Intake.getIntake());
-    NetworkTableInstance.getDefault().getTable("PERIODIC INTAKE").getEntry("Inclina Velocity").setDouble(Intake.mInclina.getVelocity().getValueAsDouble());
-    NetworkTableInstance.getDefault().getTable("PERIODIC INTAKE").getEntry("Spindex Velocity").setDouble(Intake.mOrganizador.getEncoder().getVelocity());
-    NetworkTableInstance.getDefault().getTable("PERIODIC INTAKE").getEntry("Esteira Velocity").setDouble(Intake.getSpeedEsteira());
+    NetworkTableInstance.getDefault().getTable("PERIODIC INTAKE").getEntry("Articulated Position").setDouble(Intake.getArticulatedPosition());
+    NetworkTableInstance.getDefault().getTable("PERIODIC INTAKE").getEntry("Articulated Velocity").setDouble(Intake.getArticulatedVelocity());
+    NetworkTableInstance.getDefault().getTable("PERIODIC INTAKE").getEntry("Coletor Position").setDoubleArray(Intake.getIntakePosition());
+    NetworkTableInstance.getDefault().getTable("PERIODIC INTAKE").getEntry("Esteira Velocity").setDouble(Intake.getBeltVelocity());
 
-    Logger.recordOutput("Intake/InclinaPosition", Intake.getInclina());
-    Logger.recordOutput("Intake/ColetorPosition", Intake.getIntake());
-    Logger.recordOutput("Intake/InclinaVelocity", Intake.mInclina.getVelocity().getValueAsDouble());
-    Logger.recordOutput("Intake/Spindex Velocity", Intake.mOrganizador.getEncoder().getVelocity());
-    Logger.recordOutput("Intake/Esteira Velocity", Intake.getSpeedEsteira());
-    Logger.recordOutput("Intake/InclinaPosition", Intake.getInclina());
+    Logger.recordOutput("Intake/ArticulatedPosition", Intake.getArticulatedPosition());
+    Logger.recordOutput("Intake/ArticulatedVelocity", Intake.getArticulatedVelocity());
+    Logger.recordOutput("Intake/ColetorPosition", Intake.getIntakePosition());
+    Logger.recordOutput("Intake/Esteira Velocity", Intake.getBeltVelocity());
 
     NetworkTableInstance.getDefault().getTable("PERIODIC CLIMBER").getEntry("Position").setDouble(Climber.getPosition());
 
@@ -328,13 +325,12 @@ public class Robot extends LoggedRobot
   }
 
   void initializeRobot(){
-    Intake.mIntake.getEncoder().setPosition(0);
-    // Intake.mIntake.setPosition(0);
-    Intake.mInclina.setPosition(0);
-    Intake.mOrganizador.getEncoder().setPosition(0);
+    Intake.mIntakeL.setPosition(0);
+    Intake.mIntakeR.setPosition(0);
+    Intake.mArticulated.setPosition(0);
     Hood.mShooterL.setPosition(0);
     Hood.mShooterR.setPosition(0);
-    Hood.mHood.getEncoder().setPosition(0);
+    Hood.mHood.setPosition(0);
     Hood.mShooterL.setPosition(0);
     mPigeon2.setYaw(0);
     Climber.mclimber.setPosition(0);
@@ -342,6 +338,6 @@ public class Robot extends LoggedRobot
     Hood.configHood(0.1, -0.1, 0.2);
     Hood.configIndex(NeutralModeValue.Coast);
     Hood.configShooter(NeutralModeValue.Coast);
-    Intake.configInclina(0.15, -1, 1, NeutralModeValue.Brake);
+    Intake.configArticulated(0.15, -1, 1, NeutralModeValue.Brake);
   }
 }

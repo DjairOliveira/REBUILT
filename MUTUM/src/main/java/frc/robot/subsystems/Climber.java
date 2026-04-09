@@ -15,8 +15,7 @@ import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 
 public class Climber  extends Command {
 
-    public static TalonFXS mclimber = new TalonFXS(22);
-    public static TalonFXSConfiguration config = new TalonFXSConfiguration();
+    public static TalonFXS mclimber = new TalonFXS(17);
     public static PositionDutyCycle PID = new PositionDutyCycle(0);
 
     private final SwerveSubsystem swerve;
@@ -25,16 +24,25 @@ public class Climber  extends Command {
         this.swerve = swerve;
     }
 
+    /**
+    * Configura o climber.
+    * @motor @param Type 1 x Minion
+    *
+    * @param KP Ganho proporcional do sistema.
+    * @param OutMin Velocidade maximo e minima do sistema [LIMITE = -1].
+    * @param OutMax Velocidade maximo e minima do sistema [LIMITE = 1].
+    * @param kMode Define o freio do motor, brake ou coast.
+    */
     static void configClimber(double KP, double OutMin, double OutMax, NeutralModeValue kMode) {
+        TalonFXSConfiguration config = new TalonFXSConfiguration();
+        
         config.Commutation.MotorArrangement = MotorArrangementValue.Minion_JST;
 
         config.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
-        // config.ClosedLoopRamps.DutyCycleClosedLoopRampPeriod = 0.1;
 
         config.MotorOutput.NeutralMode = kMode;
         config.CurrentLimits.SupplyCurrentLimit = 80;
         config.CurrentLimits.SupplyCurrentLimitEnable = false;
-        // config.Feedback.SensorToMechanismRatio = 1.0;
         config.MotorOutput.PeakForwardDutyCycle = OutMax;
         config.MotorOutput.PeakReverseDutyCycle = OutMin;
 
@@ -46,27 +54,46 @@ public class Climber  extends Command {
         mclimber.getConfigurator().apply(config);
     }
 
+    /**
+    * Retorna a posição do climber.
+    *
+    */
     public static double getPosition() {
         return mclimber.getPosition().getValueAsDouble();
     }
 
+    /**
+    * Define a posição do Climber.
+    *
+    * @param position Posição desejada do Climber.
+    * @param speed Velocidade maximo e minima do sistema [LIMITES 1 a -1].
+    */
     public void setPosition(double position, double speed) {
-        double blueX = 4.298; // Aliança
-        double redX = 12.41; // Aliança
+        // double blueX = 4.298; // Aliança
+        // double redX = 12.41; // Aliança
 
-        Pose2d robotPose = swerve.getPose();
+        // Pose2d robotPose = swerve.getPose();
 
-        if((!isRedAlliance() && robotPose.getX() <= blueX) || (isRedAlliance() && robotPose.getX() >= redX)){
-            configClimber(2, -speed, speed, NeutralModeValue.Brake);
-            mclimber.setControl(PID.withPosition(position));
-        }
+        /* Controlar melhor o acionamento, somente impedir na Treanch  */
+
+        // if((!isRedAlliance() && robotPose.getX() <= blueX) || (isRedAlliance() && robotPose.getX() >= redX)){
+        //     configClimber(2, -speed, speed, NeutralModeValue.Brake);
+        //     mclimber.setControl(PID.withPosition(position));
+        // }
+        mclimber.setControl(PID.withPosition(position));
     }
 
+    /**
+    * Para o motor do Climber.
+    */
     static public void stop(){
         configClimber(0, 0, 0, NeutralModeValue.Coast);
         mclimber.set(0);
     }
 
+    /**
+    * Retorna a aliança da Drive Station
+    */
     private static boolean isRedAlliance() {
         var alliance = DriverStation.getAlliance();
         return alliance.isPresent() ? alliance.get() == DriverStation.Alliance.Red : false;

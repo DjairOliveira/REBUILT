@@ -83,16 +83,14 @@ public class RobotContainer
     DriverStation.silenceJoystickConnectionWarning(true);
   
     new EventTrigger("INTAKE_ON").onTrue(new SequentialCommandGroup(
-      Commands.runOnce(()-> Intake.setInclina(-21.9,0.15,1)),
+      Commands.runOnce(()-> Intake.setArticulated(-21.9,0.15,1)),
       Commands.waitSeconds(0.3),
       Commands.runOnce(()-> Intake.setIntakeSpeed(1)),
-      Commands.runOnce(()-> Intake.setSpeedEsteira(0)),
-      Commands.runOnce(()-> Intake.setSpeedOrganizador(-0.08)),
+      Commands.runOnce(()-> Intake.setBeltSpeed(0)),
       Commands.runOnce(()-> Hood.setIndex(-0.05))));
       
     NamedCommands.registerCommand("INTAKE_OFF", new SequentialCommandGroup(
-      Commands.runOnce(()-> Intake.setInclina(-14,0.3,0.25)),
-      new InstantCommand(()-> Intake.setSpeedOrganizador(0)),
+      Commands.runOnce(()-> Intake.setArticulated(-14,0.3,0.25)),
       Commands.runOnce(()-> Hood.setIndex(0)),
       Commands.runOnce(()-> Intake.setIntakeSpeed(1))));
 
@@ -121,8 +119,6 @@ public class RobotContainer
    */
   private void configureBindings()
   {
-    // Command driverJose = drivebase.driveFieldOriented(driveAngularVelocityJose);
-
     BooleanSupplier  driverShooter = ()-> driver.getLeftBumperButtonPressed();
     BooleanSupplier defaultMove = ()-> driver.getLeftBumperButtonReleased() || Robot.elapsedTime < 1;
     Command driveMode = drivebase.driveFieldOriented(driveAngularVelocity);
@@ -135,67 +131,32 @@ public class RobotContainer
     // Cmdriver.leftBumper().onTrue((Commands.runOnce(drivebase::lock, drivebase)));  APENAS PARADO
 
     /********** INTAKE **************************/
-    BooleanSupplier protectIntake = ()-> Intake.getInclina() > -15 && Intake.getInclina() < -3. && Intake.getVelocityInclina() > 0 && intakectn==1;
-    BooleanSupplier safeInclina = ()-> Intake.getInclina() < -15 && intakectn==1;
-    BooleanSupplier coletarsafe = ()-> Intake.getInclina() > -3;
-    
     activateCommandOnCondition(()-> driver.getAButton(), new InstantCommand(()-> intakectn++));
 
     activateCommandOnCondition(()-> intakectn==1, new SequentialCommandGroup(
-      Commands.runOnce(()-> Intake.setInclina(-21.9,0.15,1)),
+      Commands.runOnce(()-> Intake.setArticulated(-21.9,0.15,1)),
       Commands.waitSeconds(0.3),
       Commands.runOnce(()-> Intake.setIntakeSpeed(1)),
-      Commands.runOnce(()-> Intake.setSpeedEsteira(0)),
-      Commands.runOnce(()-> Intake.setSpeedOrganizador(-0.08)),
+      Commands.runOnce(()-> Intake.setBeltSpeed(0)),
       Commands.runOnce(()-> Hood.setIndex(-0.05))));
 
-    // activateCommandOnCondition(()-> intakectn==2, Commands.runOnce(()-> Intake.setIntakeSpeed(0)));
-
-    // activateCommandOnCondition(()-> intakectn==3, new SequentialCommandGroup(
-    //   Commands.runOnce(()-> Intake.setInclina(0,0.3,0.25)),
-    //   new InstantCommand(()-> Intake.setSpeedOrganizador(0)),
-    //   Commands.runOnce(()-> Turret.setEngatilha(0)),
-    //   Commands.runOnce(()-> Intake.setIntakeSpeed(1)),
-    //   new InstantCommand(()-> intakectn=0)));
-
     activateCommandOnCondition(()-> intakectn>=2, new SequentialCommandGroup(
-      Commands.runOnce(()-> Intake.setInclina(0,0.3,0.25)),
-      new InstantCommand(()-> Intake.setSpeedOrganizador(0)),
+      Commands.runOnce(()-> Intake.setArticulated(0,0.3,0.25)),
       Commands.runOnce(()-> Hood.setIndex(0)),
-      Commands.runOnce(()-> Intake.setSpeedEsteira(0)),
+      Commands.runOnce(()-> Intake.setBeltSpeed(0)),
       Commands.runOnce(()-> Intake.setIntakeSpeed(1)),
       new InstantCommand(()-> intakectn=0)));
 
-    activateCommandOnCondition(protectIntake, new InstantCommand(()-> intakectn=2));
-    activateCommandOnCondition(safeInclina, Commands.runOnce(()-> Intake.stopInclina()));
-    activateCommandOnCondition(coletarsafe, Commands.runOnce(()-> Intake.setIntakeSpeed(0)));
-
-    /********** TURRET **************************/
+    /********** HOOD **************************/
     Cmdriver.b().onTrue(new SequentialCommandGroup(
       Commands.runOnce(() -> Hood.stopShooterSpeed()),
-      Commands.runOnce(() -> Hood.stopIndex()),
-      Commands.runOnce(() -> Intake.stopOrganizador()),
-      Commands.runOnce(() -> Intake.setSpeedEsteira(0))));
+      Commands.runOnce(() -> Hood.stopIndexSpeed()),
+      Commands.runOnce(() -> Intake.setBeltSpeed(0))));
 
     Cmdriver.leftBumper().whileTrue(mTurret.repeatedly());
     Cmdriver.leftBumper().onFalse(Commands.runOnce(() -> mTurret.end()));
 
-    Cmdriver.rightBumper().whileTrue(new SequentialCommandGroup(
-      Commands.runOnce(() -> Hood.setIndex(0.4)),
-      Commands.runOnce(() -> Hood.setShooter(0.4)),
-      Commands.runOnce(() -> Intake.setSpeedOrganizador(0.2)),
-      Commands.runOnce(() -> Intake.setSpeedEsteira(0.2)),
-      Commands.runOnce(() -> Intake.setIntakeSpeed(1))));
-
-    Cmdriver.rightBumper().onFalse(new SequentialCommandGroup(
-      Commands.runOnce(() -> Hood.setIndex(0)),
-      Commands.runOnce(() -> Hood.setShooter(0)),
-      Commands.runOnce(() -> Intake.setSpeedOrganizador(0)),
-      Commands.runOnce(() -> Intake.setSpeedEsteira(0)),
-      Commands.runOnce(() -> Intake.setIntakeSpeed(0))));
-
     /*  CLIMBER  */
-    
     Cmdriver.povDown().onTrue(Commands.runOnce(() -> mClimber.setPosition(0, 1))); //359 max alto
     Cmdriver.povUp().onTrue(Commands.runOnce(() -> mClimber.setPosition(-350, 1)));
 

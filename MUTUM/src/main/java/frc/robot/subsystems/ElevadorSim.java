@@ -167,10 +167,6 @@ public class ElevadorSim extends SubsystemBase {
 
 
         Logger.recordOutput("RobotPose", new Pose2d());
-        Logger.recordOutput("ZeroedComponentPoses", new Pose3d[] {new Pose3d()});
-        /* AGROBOT */
-        // Logger.recordOutput("FinalComponentPoses", new Pose3d[] {new Pose3d(
-        //     -0.1535, -0.1425-0.085, 0.335, new Rotation3d(0.0, 0, Turret.getAngleTurretSim()))});
 
         Logger.recordOutput("SubSystemHood", new Pose3d[] {new Pose3d(
             -0.22, 0, 0.43, new Rotation3d(0.0, Math.toRadians(subShooterAngle), Math.PI))});
