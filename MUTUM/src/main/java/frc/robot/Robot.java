@@ -23,7 +23,7 @@ import edu.wpi.first.wpilibj.simulation.XboxControllerSim;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.subsystems.Climber;
-import frc.robot.subsystems.ElevadorSim;
+import frc.robot.subsystems.SubSystemSIM;
 import frc.robot.subsystems.Intake;
 import frc.robot.subsystems.Hood;
 
@@ -62,7 +62,7 @@ public class Robot extends LoggedRobot
 
   public static GenericEntry velocityRobot;
   public static GenericEntry velocityTiro;
-  public static GenericEntry setInclina;
+  public static GenericEntry setHmax;
 
   public static GenericEntry pipeline;
   public static GenericEntry auxiliar;
@@ -70,7 +70,7 @@ public class Robot extends LoggedRobot
 
   public static double[] pose = new double[3];
 
-  private ElevadorSim mElevadorSim = new ElevadorSim();
+  private SubSystemSIM mSubSystemSIM = new SubSystemSIM();
 
   public Robot()
   {
@@ -90,8 +90,8 @@ public class Robot extends LoggedRobot
         .withSize(2, 6)
         .getEntry();
 
-    setInclina = Shuffleboard.getTab("CONFIG")
-        .add("INCLINATION", 1)
+    setHmax = Shuffleboard.getTab("CONFIG")
+        .add("INCLINATION", 2.83)
         .withWidget(BuiltInWidgets.kNumberSlider)
         .withProperties(Map.of("min", 0, "max", 1, "orientation", "VERTICAL"))
         .withSize(2, 6)
@@ -314,14 +314,14 @@ public class Robot extends LoggedRobot
   @Override
   public void simulationPeriodic()
   {
-    if (mControl.getAButtonPressed()) mElevadorSim.setTargetHeight(0.0);
-    if (mControl.getBButtonPressed()) mElevadorSim.setTargetHeight(0.5);
-    if (mControl.getXButtonPressed()) mElevadorSim.setTargetHeight(1.0);
-    if (mControl.getYButtonPressed()) mElevadorSim.setTargetHeight(1.5);
-    mElevadorSim.setSubShooter(Hood.map(mControl.getRightTriggerAxis(), 0, 1, -20, 20));
-    mElevadorSim.setSubIntake((120 * mControl.getRightTriggerAxis()) - 120);
-    mElevadorSim.setSubGaveta(0.342 * mControl.getRightTriggerAxis());
-    mElevadorSim.setSubClimber(Hood.map(mControl.getRightTriggerAxis(), 0, 1, -0.1, 0.2));
+    // if (mControl.getAButtonPressed()) mSubSystemSIM.setTargetHeight(0.0);
+    // if (mControl.getBButtonPressed()) mSubSystemSIM.setTargetHeight(0.5);
+    // if (mControl.getXButtonPressed()) mSubSystemSIM.setTargetHeight(1.0);
+    // if (mControl.getYButtonPressed()) mSubSystemSIM.setTargetHeight(1.5);
+    // mSubSystemSIM.setSubShooter(Hood.map(mControl.getRightTriggerAxis(), 0, 1, -70, -110));
+    // mSubSystemSIM.setSubIntake((-120 * mControl.getRightTriggerAxis()) + 120);
+    // mSubSystemSIM.setSubGaveta((0.28 * mControl.getRightTriggerAxis()));
+    // mSubSystemSIM.setSubClimber(Hood.map(mControl.getRightTriggerAxis(), 0, 1, -0.1, 0.2));
   }
 
   void initializeRobot(){

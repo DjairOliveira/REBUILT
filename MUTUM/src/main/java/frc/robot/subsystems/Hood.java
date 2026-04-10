@@ -1,5 +1,7 @@
 package frc.robot.subsystems;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Optional;
 
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
@@ -13,10 +15,13 @@ import com.ctre.phoenix6.signals.NeutralModeValue;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.networktables.NetworkTableInstance;
+import edu.wpi.first.networktables.StructArrayPublisher;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
@@ -55,6 +60,7 @@ public class Hood extends Command {
 
     public static double OmegaCmd = 0;
     public static double angleTurretSim = 0;
+    public static double poseHood = 0;
 
     public ChassisSpeeds speeds;
 
@@ -78,8 +84,9 @@ public class Hood extends Command {
         double redX = 12.41;    // Aliança
         double targetX = 0;
         double targetY = 0;
+        double targetZ = 0;
 
-        double poseHood = 0;
+        
         double speedShooter = 0, speedBelt = 0, speedIndex = 0;
 
         Pose2d robotPose = swerve.getPose();
@@ -91,18 +98,20 @@ public class Hood extends Command {
         if((!isRedAlliance() && robotPose.getX() <= blueX) || (isRedAlliance() && robotPose.getX() >= redX)){
             targetX = isRedAlliance() ? 11.914 : 4.624;
             targetY = 4.044;
+            targetZ = 1.63;
             mode = true;
         }
         else if((!isRedAlliance() && robotPose.getX() > blueX + 1.4) || (isRedAlliance() && robotPose.getX() < redX - 1.4)){
             if((robotPose.getY() - 4.044) >= 0) targetY = 6;
             else targetY = 1.829;
-
             targetX = isRedAlliance() ? 14.32 : 2.331;
+            targetZ = 0.5;
             mode = true;
         }
         else{
             if((robotPose.getY() - 4.044) >= 0) targetY = 6;
             else targetY = 1.829;
+            targetZ = 0.5;
 
             targetX = isRedAlliance() ? 14.32 : 2.331;
             mode = false;
@@ -110,8 +119,9 @@ public class Hood extends Command {
 
         double distanceHood = hoodAling(targetX, targetY);
 
+        /*
         if(mode){
-            // poseHood = map(parabola(distanceHood), 45, 80, 6, 0);
+            poseHood = map(parabola(distanceHood), 40, 80, -20, 20);
             // speedShooter = Math.max(-0.7, Math.min(-0.52, interpolate(distanceHood, distances, speed) * Robot.velocityTiro.getDouble(0)));
             poseHood = Robot.setInclina.getDouble(0);
             speedShooter = Robot.velocityTiro.getDouble(0);
@@ -121,8 +131,10 @@ public class Hood extends Command {
             speedIndex = 0;
             speedBelt = 0;
         }
+        */
 
-        setHoodPosition(poseHood);
+        poseHood = map(parabola(distanceHood, targetX, targetY, targetZ), 40, 80, -110, -70);
+        //setHoodPosition(poseHood);
         setShooterRPM(speedShooter);  /// Max 6000
         if((targetRPM - velocityShooter[0]) < 1.5){
             dispOk = true;
@@ -160,7 +172,7 @@ public class Hood extends Command {
 
         NetworkTableInstance.getDefault().getTable("HOOD").getEntry("Inter speed").setDouble(interpolate(distanceHood, distances, speed));
         NetworkTableInstance.getDefault().getTable("HOOD").getEntry("Distance").setDouble(distanceHood);
-        NetworkTableInstance.getDefault().getTable("HOOD").getEntry("Parabola").setDouble(parabola(distanceHood));
+        NetworkTableInstance.getDefault().getTable("HOOD").getEntry("Parabola").setDouble(parabola(distanceHood, targetX, targetY, targetZ));
         setLogger();
     }
 
@@ -180,6 +192,10 @@ public class Hood extends Command {
         Logger.recordOutput("Turret/VerticalPosition", getHoodPositon());
         Logger.recordOutput("Turret/ShooterRight", mShooterL.getVelocity().getValueAsDouble());
         Logger.recordOutput("Turret/ShooterLeft", mShooterR.getVelocity().getValueAsDouble());
+    }
+
+    public static double getAngleHood(){
+        return poseHood;
     }
 
     /**
@@ -212,16 +228,68 @@ public class Hood extends Command {
     * Retorna o angulo de saida do objeto de jogo em graus.
     *
     * @param distHoodToHUB Distancia do Hood para o alvo.
+    * @param targetH Altura alvo do Fuel (Altura do Fuel no centro do HUB);
+    * @param initH Altura inicial da Fuel (Momento de saida do shooter do robô);
+    * @param maxH Alura maxima do Fuel durante a trajetória.
     */
-    public static double parabola(double distHoodToHUB) {
-        double delta_T = 0, a_T = 0, b_T = 0, c_T = 1.112;
+    public double parabola(double distHoodToHUB, double Target_X, double Target_Y, double Target_Z) {
+        Pose2d robot_getValues = swerve.getPose();
+        Translation2d robot_pose = robot_getValues.getTranslation();
+        Translation2d pose_Target = new Translation2d(Target_X , Target_Y);
+        Translation2d offsetHood = new Translation2d(0.19719, 0);
+        Rotation2d Robot_Yaw = robot_getValues.getRotation();
+        Translation2d poseHood = robot_pose.plus(offsetHood.rotateBy(Robot_Yaw));
+
+        double hHUB = 1.83;
+
+        double targetH = Target_Z;//1.63
+        double initH = 0.518;
+        double maxH = hHUB + Robot.setHmax.getDouble(1);
+
+        double delta_T = 0, a_T = 0, b_T = 0, c_T = targetH - initH;  //1.112
         double tan_angle_T = 0;
 
-        a_T = (Math.pow(distHoodToHUB, 2) / 9.248);
+        a_T = (Math.pow(distHoodToHUB, 2) / (4 * (maxH - initH)));
         b_T = -distHoodToHUB;
         delta_T = (Math.pow(b_T, 2) - 4 * a_T * c_T);
         tan_angle_T = (distHoodToHUB + Math.sqrt(delta_T)) / (2 * a_T);
+
+        Pose3d[] traj = trajectoryFuel(
+            poseHood,
+            pose_Target,
+            initH,   // altura inicial (saída do shooter)
+            maxH,   // altura máxima da curva
+            targetH    // altura do alvo
+        );
+
+        Logger.recordOutput("ShotTrajectory", traj);
+
         return Math.toDegrees(Math.atan(tan_angle_T));
+    }
+    
+    public Pose3d[] trajectoryFuel(Translation2d robotPos, Translation2d targetPos,
+        double startHeight, double peakHeight, double endHeight) {
+
+        List<Pose3d> points = new ArrayList<>();
+        int steps = 20;
+
+        for (int i = 0; i <= steps; i++) {
+            double t = i / (double) steps;
+
+            double x = robotPos.getX() + t * (targetPos.getX() - robotPos.getX());
+            double y = robotPos.getY() + t * (targetPos.getY() - robotPos.getY());
+
+            // Base linear entre início e fim
+            double linearZ = startHeight + t * (endHeight - startHeight);
+
+            // "Arco" parabólico com pico real em peakHeight
+            double arc = 4.0 * t * (1.0 - t) * (peakHeight - ((startHeight + endHeight) / 2.0));
+
+            double z = linearZ + arc;
+
+            points.add(new Pose3d(x, y, z, new Rotation3d()));
+        }
+        return points.toArray(new Pose3d[0]);
     }
 
     /**
@@ -235,15 +303,15 @@ public class Hood extends Command {
         Rotation2d Robot_Yaw = robot_getValues.getRotation();
         Translation2d robot_pose = robot_getValues.getTranslation();
 
-        Translation2d pose_Hub = new Translation2d(Target_X , Target_Y);
-        Translation2d offsetHood = new Translation2d(-0.19719, 0);
+        Translation2d pose_Target = new Translation2d(Target_X , Target_Y);
+        Translation2d offsetHood = new Translation2d(0.19719, 0);
         Translation2d poseHood = robot_pose.plus(offsetHood.rotateBy(Robot_Yaw));
-        double distanceHood = poseHood.getDistance(pose_Hub);
+        double distanceHood = poseHood.getDistance(pose_Target);
 
-        Translation2d angleRobot = pose_Hub.minus(robot_pose);
+        Translation2d angleRobot = pose_Target.minus(robot_pose);
         Rotation2d targetAngle = angleRobot.getAngle();
 
-        double error = MathUtil.angleModulus(targetAngle.minus(Robot_Yaw.plus(new Rotation2d(Math.PI))).getRadians());
+        double error = MathUtil.angleModulus(targetAngle.minus(Robot_Yaw.plus(new Rotation2d(0))).getRadians());
         double kP = 1;
         OmegaCmd = kP * error;
 

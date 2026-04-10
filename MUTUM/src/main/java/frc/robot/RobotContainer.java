@@ -22,6 +22,7 @@ import edu.wpi.first.wpilibj2.command.button.Trigger;
 import frc.robot.Constants.OperatorConstants;
 import frc.robot.subsystems.Climber;
 import frc.robot.subsystems.Intake;
+import frc.robot.subsystems.SubSystemSIM;
 import frc.robot.subsystems.Hood;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 import java.io.File;
@@ -40,8 +41,9 @@ public class RobotContainer
   public XboxController driver = new XboxController(0);
   
   public final SwerveSubsystem drivebase = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(), "swerve/MK4i"));
-  private Hood mTurret = new Hood(drivebase);
+  private Hood mHood = new Hood(drivebase);
   private Climber mClimber = new Climber(drivebase);
+  private SubSystemSIM mSubSystemSIM = new SubSystemSIM();
 
   private int intakectn = 0;
   private final SendableChooser<Command> autoChooser;
@@ -69,7 +71,7 @@ public class RobotContainer
       drivebase.getSwerveDrive(),
       () -> Cmdriver.getLeftY() * (-1),
       () -> Cmdriver.getLeftX() * (-1)).withControllerRotationAxis(
-      () -> mTurret.getOmega())
+      () -> mHood.getOmega())
       .deadband(OperatorConstants.DEADBAND)
       .scaleTranslation(0.8)
       .allianceRelativeControl(true);
@@ -95,8 +97,8 @@ public class RobotContainer
       Commands.runOnce(()-> Intake.setIntakeSpeed(1))));
 
     new EventTrigger("TURRET_OFF").onTrue(new SequentialCommandGroup(
-      Commands.runOnce(() -> mTurret.end()),
-      Commands.runOnce(() -> mTurret.cancel())));
+      Commands.runOnce(() -> mHood.end()),
+      Commands.runOnce(() -> mHood.cancel())));
 
     new EventTrigger("TURRET_MOVE").onTrue(new Hood(drivebase));
       
@@ -133,18 +135,26 @@ public class RobotContainer
     /********** INTAKE **************************/
     activateCommandOnCondition(()-> driver.getAButton(), new InstantCommand(()-> intakectn++));
 
+    // activateCommandOnCondition(()-> intakectn==1, new SequentialCommandGroup(
+    //   Commands.runOnce(()-> Intake.setArticulated(-21.9,0.15,1)),
+    //   Commands.waitSeconds(0.3),
+    //   Commands.runOnce(()-> Intake.setIntakeSpeed(1)),
+    //   Commands.runOnce(()-> Intake.setBeltSpeed(0)),
+    //   Commands.runOnce(()-> Hood.setIndex(-0.05))));
+
+    // activateCommandOnCondition(()-> intakectn>=2, new SequentialCommandGroup(
+    //   Commands.runOnce(()-> Intake.setArticulated(0,0.3,0.25)),
+    //   Commands.runOnce(()-> Hood.setIndex(0)),
+    //   Commands.runOnce(()-> Intake.setBeltSpeed(0)),
+    //   Commands.runOnce(()-> Intake.setIntakeSpeed(1)),
+    //   new InstantCommand(()-> intakectn=0)));
+
     activateCommandOnCondition(()-> intakectn==1, new SequentialCommandGroup(
-      Commands.runOnce(()-> Intake.setArticulated(-21.9,0.15,1)),
-      Commands.waitSeconds(0.3),
-      Commands.runOnce(()-> Intake.setIntakeSpeed(1)),
-      Commands.runOnce(()-> Intake.setBeltSpeed(0)),
-      Commands.runOnce(()-> Hood.setIndex(-0.05))));
+      Commands.runOnce(()-> mSubSystemSIM.setSubIntake(20, 0, 20)),
+      Commands.runOnce(()-> mSubSystemSIM.setSubClimber(100, 0, 100))));
 
     activateCommandOnCondition(()-> intakectn>=2, new SequentialCommandGroup(
-      Commands.runOnce(()-> Intake.setArticulated(0,0.3,0.25)),
-      Commands.runOnce(()-> Hood.setIndex(0)),
-      Commands.runOnce(()-> Intake.setBeltSpeed(0)),
-      Commands.runOnce(()-> Intake.setIntakeSpeed(1)),
+      Commands.runOnce(()-> mSubSystemSIM.setSubIntake(0, 0, 20)),
       new InstantCommand(()-> intakectn=0)));
 
     /********** HOOD **************************/
@@ -153,13 +163,16 @@ public class RobotContainer
       Commands.runOnce(() -> Hood.stopIndexSpeed()),
       Commands.runOnce(() -> Intake.setBeltSpeed(0))));
 
-    Cmdriver.leftBumper().whileTrue(mTurret.repeatedly());
-    Cmdriver.leftBumper().onFalse(Commands.runOnce(() -> mTurret.end()));
+    Cmdriver.leftBumper().whileTrue(mHood.repeatedly());
+    Cmdriver.leftBumper().onFalse(Commands.runOnce(() -> mHood.end()));
 
     /*  CLIMBER  */
-    Cmdriver.povDown().onTrue(Commands.runOnce(() -> mClimber.setPosition(0, 1))); //359 max alto
-    Cmdriver.povUp().onTrue(Commands.runOnce(() -> mClimber.setPosition(-350, 1)));
+    // Cmdriver.povDown().onTrue(Commands.runOnce(() -> mClimber.setPosition(0, 1))); //359 max alto
+    // Cmdriver.povUp().onTrue(Commands.runOnce(() -> mClimber.setPosition(-350, 1)));
 
+    Cmdriver.povUp().onTrue(Commands.runOnce(() -> mSubSystemSIM.setSubClimber(100, 0, 100)));
+    Cmdriver.povDown().onTrue(Commands.runOnce(() -> mSubSystemSIM.setSubClimber(0, 0, 100)));
+    
   } 
 
   private void activateCommandOnCondition(BooleanSupplier condition, Command command) {
