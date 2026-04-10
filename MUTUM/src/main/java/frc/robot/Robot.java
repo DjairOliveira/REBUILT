@@ -41,14 +41,9 @@ public class Robot extends LoggedRobot
 {
   private static Robot instance;
 
-  // private static Turret mTurret = new Turret();
   private Command m_autonomousCommand;
 
   private RobotContainer m_robotContainer;
-
-  public static double linearVelocity=0;
-
-  private XboxController mControl = new XboxController(0);
 
   public static final Pigeon2 mPigeon2 = new Pigeon2(13);
 
@@ -56,7 +51,6 @@ public class Robot extends LoggedRobot
   private double teleopStartTime = 0;
   public static double elapsedTime = 0;
 
-  Optional<DriverStation.Alliance> alliance = DriverStation.getAlliance();
   private NetworkTable limelightBack = NetworkTableInstance.getDefault().getTable("limelight-back");
   private NetworkTable limelightFront = NetworkTableInstance.getDefault().getTable("limelight-front");
 
@@ -69,8 +63,6 @@ public class Robot extends LoggedRobot
   public static GenericEntry Driver;
 
   public static double[] pose = new double[3];
-
-  private SubSystemSIM mSubSystemSIM = new SubSystemSIM();
 
   public Robot()
   {
@@ -91,32 +83,23 @@ public class Robot extends LoggedRobot
         .getEntry();
 
     setHmax = Shuffleboard.getTab("CONFIG")
-        .add("INCLINATION", 2.83)
+        .add("Hmax", 1)
         .withWidget(BuiltInWidgets.kNumberSlider)
         .withProperties(Map.of("min", 0, "max", 1, "orientation", "VERTICAL"))
-        .withSize(2, 6)
+        .withSize(10, 10)
         .getEntry();
         
-
     auxiliar = Shuffleboard.getTab("CONFIG")
         .add("Auxiliar", -0.1)
         .withWidget(BuiltInWidgets.kNumberSlider)
         .withProperties(Map.of("min", -1, "max", 0, "orientation", "VERTICAL"))
-        .withSize(2, 6)
+        .withSize(10, 10)
         .getEntry();
 
     pipeline = Shuffleboard.getTab("CONFIG")
         .add("Pipeline", 0)
         .withWidget(BuiltInWidgets.kTextView)
         .getEntry();
-
-    Driver = Shuffleboard.getTab("CONFIG")
-        .add("Driver Mode", 2)
-        .withWidget(BuiltInWidgets.kNumberSlider)
-        .withProperties(Map.of("min", 0, "max", 1, "orientation", "VERTICAL"))
-        .withSize(2, 6)
-        .getEntry();
-
   }
 
   public static Robot getInstance()
@@ -186,23 +169,26 @@ public class Robot extends LoggedRobot
       Math.toRadians(pose[2])
     });
 
-    NetworkTableInstance.getDefault().getTable("PERIODIC INTAKE").getEntry("Articulated Position").setDouble(Intake.getArticulatedPosition());
-    NetworkTableInstance.getDefault().getTable("PERIODIC INTAKE").getEntry("Articulated Velocity").setDouble(Intake.getArticulatedVelocity());
-    NetworkTableInstance.getDefault().getTable("PERIODIC INTAKE").getEntry("Coletor Position").setDoubleArray(Intake.getIntakePosition());
-    NetworkTableInstance.getDefault().getTable("PERIODIC INTAKE").getEntry("Esteira Velocity").setDouble(Intake.getBeltVelocity());
+
+    NetworkTableInstance.getDefault().getTable("HOOD").getEntry("PositionHood").setDouble(Hood.getHoodPositon());
+    NetworkTableInstance.getDefault().getTable("HOOD").getEntry("PositionIndex").setDoubleArray(Hood.getIndexPosition());
+    NetworkTableInstance.getDefault().getTable("HOOD").getEntry("PositionShooter").setDoubleArray(Hood.getShooterPosition());
+
+    NetworkTableInstance.getDefault().getTable("INTAKE").getEntry("Articulated Position").setDouble(Intake.getArticulatedPosition());
+    NetworkTableInstance.getDefault().getTable("INTAKE").getEntry("Coletor Position").setDoubleArray(Intake.getIntakePosition());
+    NetworkTableInstance.getDefault().getTable("INTAKE").getEntry("Esteira Velocity").setDouble(Intake.getBeltPosition());
+
+    NetworkTableInstance.getDefault().getTable("CLIMBER").getEntry("Position").setDouble(Climber.getPosition());
 
     Logger.recordOutput("Intake/ArticulatedPosition", Intake.getArticulatedPosition());
     Logger.recordOutput("Intake/ArticulatedVelocity", Intake.getArticulatedVelocity());
     Logger.recordOutput("Intake/ColetorPosition", Intake.getIntakePosition());
     Logger.recordOutput("Intake/Esteira Velocity", Intake.getBeltVelocity());
 
-    NetworkTableInstance.getDefault().getTable("PERIODIC CLIMBER").getEntry("Position").setDouble(Climber.getPosition());
-
     NetworkTableInstance.getDefault().getTable("PERIODIC ROBOT").getEntry("TIMER").setDouble(elapsedTime);
 
     limelightBack.getEntry("pipeline").setNumber(pipeline.getDouble(0));
     limelightFront.getEntry("pipeline").setNumber(pipeline.getDouble(0));
-
   }
 
   /**
@@ -314,14 +300,7 @@ public class Robot extends LoggedRobot
   @Override
   public void simulationPeriodic()
   {
-    // if (mControl.getAButtonPressed()) mSubSystemSIM.setTargetHeight(0.0);
-    // if (mControl.getBButtonPressed()) mSubSystemSIM.setTargetHeight(0.5);
-    // if (mControl.getXButtonPressed()) mSubSystemSIM.setTargetHeight(1.0);
-    // if (mControl.getYButtonPressed()) mSubSystemSIM.setTargetHeight(1.5);
-    // mSubSystemSIM.setSubShooter(Hood.map(mControl.getRightTriggerAxis(), 0, 1, -70, -110));
-    // mSubSystemSIM.setSubIntake((-120 * mControl.getRightTriggerAxis()) + 120);
-    // mSubSystemSIM.setSubGaveta((0.28 * mControl.getRightTriggerAxis()));
-    // mSubSystemSIM.setSubClimber(Hood.map(mControl.getRightTriggerAxis(), 0, 1, -0.1, 0.2));
+
   }
 
   void initializeRobot(){
@@ -335,9 +314,9 @@ public class Robot extends LoggedRobot
     mPigeon2.setYaw(0);
     Climber.mclimber.setPosition(0);
 
-    Hood.configHood(0.1, -0.1, 0.2);
+    Hood.configHood(0.1, -0.1, 0.1);
     Hood.configIndex(NeutralModeValue.Coast);
     Hood.configShooter(NeutralModeValue.Coast);
-    Intake.configArticulated(0.15, -1, 1, NeutralModeValue.Brake);
+    Intake.configArticulated(0.1, -0.1, 0.1, NeutralModeValue.Brake);
   }
 }

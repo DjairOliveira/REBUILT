@@ -9,7 +9,6 @@ import com.ctre.phoenix6.signals.MotorArrangementValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
 import edu.wpi.first.math.geometry.Pose2d;
-import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.subsystems.swervedrive.SwerveSubsystem;
 
@@ -69,18 +68,18 @@ public class Climber  extends Command {
     * @param speed Velocidade maximo e minima do sistema [LIMITES 1 a -1].
     */
     public void setPosition(double position, double speed) {
-        // double blueX = 4.298; // Aliança
-        // double redX = 12.41; // Aliança
+        double blueX = 4.298; // Aliança
+        double redX = 12.41; // Aliança
 
-        // Pose2d robotPose = swerve.getPose();
+        Pose2d robotPose = swerve.getPose();
 
-        /* Controlar melhor o acionamento, somente impedir na Treanch  */
-
-        // if((!isRedAlliance() && robotPose.getX() <= blueX) || (isRedAlliance() && robotPose.getX() >= redX)){
-        //     configClimber(2, -speed, speed, NeutralModeValue.Brake);
-        //     mclimber.setControl(PID.withPosition(position));
-        // }
-        mclimber.setControl(PID.withPosition(position));
+        if((robotPose.getX() >= blueX-0.2 && robotPose.getX() <= (blueX-0.2)+1.2)
+            || (robotPose.getX() >= (redX+0.2) - 1.2 && robotPose.getX() <= redX+0.2)){
+            if(position < 20) mclimber.setControl(PID.withPosition(position));
+        }
+        else{
+            if(position >= 20) mclimber.setControl(PID.withPosition(position));
+        }
     }
 
     /**
@@ -90,13 +89,4 @@ public class Climber  extends Command {
         configClimber(0, 0, 0, NeutralModeValue.Coast);
         mclimber.set(0);
     }
-
-    /**
-    * Retorna a aliança da Drive Station
-    */
-    private static boolean isRedAlliance() {
-        var alliance = DriverStation.getAlliance();
-        return alliance.isPresent() ? alliance.get() == DriverStation.Alliance.Red : false;
-    }
-
 }

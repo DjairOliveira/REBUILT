@@ -19,6 +19,7 @@ import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation2d;
+import edu.wpi.first.math.geometry.Translation3d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.networktables.StructArrayPublisher;
@@ -35,12 +36,13 @@ import org.littletonrobotics.junction.Logger;
 public class Hood extends Command {
 
     private static double startTime;
+    private boolean aligned = false;
 
     /* Shooter INIT */
     public static final TalonFX mShooterR = new TalonFX(22);
     public static final TalonFX mShooterL = new TalonFX(21);
-    public static final VelocityVoltage velocityRequest = new VelocityVoltage(0).withSlot(0);
-    private double targetRPM = 0.0;
+    public static final VelocityVoltage shooterControl = new VelocityVoltage(0).withSlot(0);
+    private double targetRPMShooter = 0.0;
     /* Shooter END */
 
     /* Hood INIT */
@@ -51,18 +53,13 @@ public class Hood extends Command {
     /* Index INIT */
     public static TalonFX mIndexL = new TalonFX(19);
     public static TalonFX mIndexR = new TalonFX(20);
-    public static PositionDutyCycle pidCtrIndex = new PositionDutyCycle(0);
+    public static final VelocityVoltage indexControl = new VelocityVoltage(0).withSlot(0);
+    private double targetRPMIndex = 0.0;
     /* Index END */
-
-    Optional<DriverStation.Alliance> alliance = DriverStation.getAlliance();
-
-    public static double[] pose = new double[3];
 
     public static double OmegaCmd = 0;
     public static double angleTurretSim = 0;
     public static double poseHood = 0;
-
-    public ChassisSpeeds speeds;
 
     double[] distances = {0.7, 1.05, 1.35, 1.65, 2, 2.551, 3.089, 3.52, 4.027, 4.635, 5.19, 5.7};
     double[] speed = {-0.4,-0.42,-0.44, -0.46, -0.485, -0.5, -0.525, -0.54, -0.5625, -0.59, -0.63, -0.65};
@@ -73,7 +70,7 @@ public class Hood extends Command {
 
     public Hood(SwerveSubsystem swerve) {
         this.swerve=swerve;
-        configHood(0.15, -0.15, 0.3);
+        configHood(0.05, -0.1, 0.1);
         configIndex(NeutralModeValue.Coast);
         configShooter(NeutralModeValue.Coast);
     }
@@ -86,93 +83,80 @@ public class Hood extends Command {
         double targetY = 0;
         double targetZ = 0;
 
-        
-        double speedShooter = 0, speedBelt = 0, speedIndex = 0;
+        double RPMShooter = 0, speedBelt = 0, RPMIndex = 0;
 
         Pose2d robotPose = swerve.getPose();
-        boolean mode = false;
         boolean dispOk = false;
 
         double[] velocityShooter = getShooterVelocity();
+        double[] velocityIndex = getIndexVelocity();
 
+        /*  Ajuste de target em função da arena - INIT */
         if((!isRedAlliance() && robotPose.getX() <= blueX) || (isRedAlliance() && robotPose.getX() >= redX)){
             targetX = isRedAlliance() ? 11.914 : 4.624;
             targetY = 4.044;
             targetZ = 1.63;
-            mode = true;
         }
         else if((!isRedAlliance() && robotPose.getX() > blueX + 1.4) || (isRedAlliance() && robotPose.getX() < redX - 1.4)){
             if((robotPose.getY() - 4.044) >= 0) targetY = 6;
             else targetY = 1.829;
             targetX = isRedAlliance() ? 14.32 : 2.331;
             targetZ = 0.5;
-            mode = true;
         }
         else{
             if((robotPose.getY() - 4.044) >= 0) targetY = 6;
             else targetY = 1.829;
-            targetZ = 0.5;
-
             targetX = isRedAlliance() ? 14.32 : 2.331;
-            mode = false;
+            targetZ = 0.5;
         }
-
+        /*  Ajuste de target em função da arena - END */
+        
         double distanceHood = hoodAling(targetX, targetY);
 
-        /*
-        if(mode){
-            poseHood = map(parabola(distanceHood), 40, 80, -20, 20);
-            // speedShooter = Math.max(-0.7, Math.min(-0.52, interpolate(distanceHood, distances, speed) * Robot.velocityTiro.getDouble(0)));
-            poseHood = Robot.setInclina.getDouble(0);
-            speedShooter = Robot.velocityTiro.getDouble(0);
-        } else{
+        /* Proteção da treanch - INIT */
+        if((robotPose.getX() >= blueX-0.2 && robotPose.getX() <= (blueX-0.2)+1.2) || (robotPose.getX() >= (redX+0.2) - 1.2 && robotPose.getX() <= redX+0.2)){
+            // poseHood = -70;
             poseHood = 0;
-            speedShooter = -0.2;
-            speedIndex = 0;
+            RPMShooter = 0;
+            RPMIndex = 0;
+            speedBelt = 0;
+
+        }else{
+            // poseHood = map(parabola(distanceHood, targetX, targetY, targetZ), 40, 80, -110, -70); Simulação
+            poseHood = Robot.auxiliar.getDouble(0);
+            RPMShooter = Robot.velocityTiro.getDouble(0.05);
+        }
+        /* Proteção da treanch - END */
+
+        setHoodPosition(poseHood);
+        setShooterRPM(RPMShooter);
+        SubSystemSIM.setShooterVelocity(3.65);
+
+        boolean RPMShooterOK = (targetRPMShooter - velocityShooter[0]) < 1.5 ? true : false;
+        boolean RPMIndexOK = (targetRPMIndex - velocityIndex[0]) < 1.5 ? true : false;
+
+        if(aligned){
+            if (RPMShooterOK) RPMIndex = 0.05; //Colocar valor para Indexar
+            else RPMIndex = 0;
+
+            if(RPMShooterOK && RPMIndexOK) speedBelt = 0.05;
+            else speedBelt = 0;
+        }else{
+            RPMIndex = 0;
             speedBelt = 0;
         }
-        */
 
-        poseHood = map(parabola(distanceHood, targetX, targetY, targetZ), 40, 80, -110, -70);
-        //setHoodPosition(poseHood);
-        setShooterRPM(speedShooter);  /// Max 6000
-        if((targetRPM - velocityShooter[0]) < 1.5){
-            dispOk = true;
-        }else{
-           dispOk = false; 
+        setIndexer(RPMIndex, speedBelt);
+
+        if((targetRPMShooter - velocityShooter[0]) > 0.5){
+            startTime = Timer.getFPGATimestamp();
         }
-        /*  PERMITIR DISPARO SOMENTE QUANDO O HOOD TIVER ALINHADO E NA VELOCIDADE CERTA */
-        // if (Math.abs(TurretAngle + getHorizontal()) > 50) {
-        //     speedShooter = -0.2;
-        //     speedEgatilha = 0;
-        //     speedEsteira = 0;
-        //     speedOrganiza = 0;
-        //     dispOk = false;
-        // } else {
-        //     dispOk = true;
-        // }
-        
-        /*  AJUDA NO AUTOMO PARA PARAR DE DISPARAR */
-        // if (dispOk && (getShooterVelocity() > (speedShooter * 100) - 3.5) && (getShooterVelocity() < (speedShooter * 100) + 3.5)){ // Testarrr
-        //     speedEgatilha = -0.7;
-        //     speedEsteira = -0.2;
-        //     speedOrganiza = -0.7;
-        // }
-        // else {
-        //     speedEgatilha = 0;
-        //     speedEsteira = 0;
-        //     speedOrganiza = 0;
-        //     startTime = Timer.getFPGATimestamp();
-        // }
 
-        // setShotter(calculatePID(-2, speedShooter, (getShooterVelocity()/100), speedShooter, -1, -0.45));
-        setFuel(speedIndex,speedBelt);
-
-        // SmartDashboard.putNumber("value pid", calculatePID(-2, speedShooter, (getShooterVelocity()/100), speedShooter, -1, -0.52));
-
-        NetworkTableInstance.getDefault().getTable("HOOD").getEntry("Inter speed").setDouble(interpolate(distanceHood, distances, speed));
         NetworkTableInstance.getDefault().getTable("HOOD").getEntry("Distance").setDouble(distanceHood);
+        NetworkTableInstance.getDefault().getTable("HOOD").getEntry("Aling").setBoolean(aligned);
+        NetworkTableInstance.getDefault().getTable("HOOD").getEntry("Interpolation speed").setDouble(interpolate(distanceHood, distances, speed));
         NetworkTableInstance.getDefault().getTable("HOOD").getEntry("Parabola").setDouble(parabola(distanceHood, targetX, targetY, targetZ));
+        
         setLogger();
     }
 
@@ -186,6 +170,8 @@ public class Hood extends Command {
         mShooterR.set(-0.2);
         setIndex(0);
         Intake.setBeltSpeed(0);
+
+        SubSystemSIM.setShooterVelocity(0);
     }
 
     private void setLogger(){
@@ -204,8 +190,8 @@ public class Hood extends Command {
     * @param index Speed do index.
     * @param belt Speed belt.
     */
-    private void setFuel (double index, double belt){
-        setIndex(index);
+    private void setIndexer (double RPMIndex, double belt){
+        setIndexRPM(RPMIndex);
         Intake.setBeltSpeed(belt);
 
     }
@@ -266,7 +252,16 @@ public class Hood extends Command {
 
         return Math.toDegrees(Math.atan(tan_angle_T));
     }
-    
+
+    /**
+    * Gera a parabola com base nos parametros desejados.
+    *
+    * @param robotPos Pose do Hood
+    * @param targetPos Pose do alvo a ser mirado.
+    * @param startHeight Altura de inicio de saida da parabola.
+    * @param peakHeight Altura maxima desejada da parabola.
+    * @param endHeight Altura do alvo.
+    */
     public Pose3d[] trajectoryFuel(Translation2d robotPos, Translation2d targetPos,
         double startHeight, double peakHeight, double endHeight) {
 
@@ -316,6 +311,9 @@ public class Hood extends Command {
         OmegaCmd = kP * error;
 
         OmegaCmd = MathUtil.clamp(OmegaCmd, -3, 3);
+
+        aligned = Math.abs(error) < Math.toRadians(3);
+
 
         NetworkTableInstance.getDefault().getTable("ROBOT").getEntry("Hood").setDoubleArray(new double[] {
         poseHood.getX(), poseHood.getY(), Robot_Yaw.getRadians()});
@@ -413,7 +411,7 @@ public class Hood extends Command {
     *
     * @param null
     */
-    static double[] getShooter() {
+    static public double[] getShooterPosition() {
         return new double[] {
             mShooterL.getPosition().getValueAsDouble(),
             mShooterR.getPosition().getValueAsDouble()};
@@ -424,7 +422,7 @@ public class Hood extends Command {
     *
     * @param null
     */
-    static double[] getShooterVelocity(){
+    static public double[] getShooterVelocity(){
         return new double[] {
             mShooterL.getVelocity().getValueAsDouble(),
             mShooterR.getVelocity().getValueAsDouble()};
@@ -455,13 +453,14 @@ public class Hood extends Command {
     * Para os motores do Shooter e configura o motor em modo coast.
     *
     * @param setpointRPM Define a velocidade dos motores do Shotter Left e Right.
+    * @param maxRPMKraken 6000.
     */
     public void setShooterRPM(double setpointRPM){
-        this.targetRPM = setpointRPM / 60.0;
+        this.targetRPMShooter = setpointRPM / 60.0;
         double kV = 0.115;
-        double VoltageFeedFoward = this.targetRPM * kV;
-        mShooterL.setControl(velocityRequest.withVelocity(targetRPM).withFeedForward(VoltageFeedFoward));
-        mShooterR.setControl(velocityRequest.withVelocity(targetRPM).withFeedForward(VoltageFeedFoward));
+        double VoltageFeedFoward = this.targetRPMShooter * kV;
+        mShooterL.setControl(shooterControl.withVelocity(targetRPMShooter).withFeedForward(VoltageFeedFoward));
+        mShooterR.setControl(shooterControl.withVelocity(targetRPMShooter).withFeedForward(VoltageFeedFoward));
     }
 
     /**
@@ -510,16 +509,7 @@ public class Hood extends Command {
     * @param position Posição do Hood.
     */
     public void setHoodPosition(double position) {
-        double blueX = 4.298;   // Aliança
-        double redX = 12.41;    // Aliança
-
-        Pose2d robotPose = swerve.getPose();
-
-        if((!isRedAlliance() && robotPose.getX() <= blueX) || (isRedAlliance() && robotPose.getX() >= redX)){
-            mHood.setControl(pidCtrHood.withPosition(position));
-        }else{
-            mHood.setControl(pidCtrHood.withPosition(0));
-        }
+        mHood.setControl(pidCtrHood.withPosition(position));
     }
 
     /**
@@ -593,6 +583,18 @@ public class Hood extends Command {
         mIndexR.set(speed);
     }
 
+    /**
+    * Controla os motores do indexer por kV.
+    *
+    * @param setpointRPM Define a velocidade dos motores do Shotter Left e Right.
+    */
+    public void setIndexRPM(double setpointRPM){
+        this.targetRPMIndex = setpointRPM / 60.0;
+        double kV = 0.115;
+        double VoltageFeedFoward = this.targetRPMIndex * kV;
+        mShooterL.setControl(shooterControl.withVelocity(targetRPMIndex).withFeedForward(VoltageFeedFoward));
+        mShooterR.setControl(shooterControl.withVelocity(targetRPMIndex).withFeedForward(VoltageFeedFoward));
+    }
     /**
     * Para os motores do Indexer e configura o motor em modo coast.
     *

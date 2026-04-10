@@ -43,7 +43,7 @@ public class RobotContainer
   public final SwerveSubsystem drivebase = new SwerveSubsystem(new File(Filesystem.getDeployDirectory(), "swerve/MK4i"));
   private Hood mHood = new Hood(drivebase);
   private Climber mClimber = new Climber(drivebase);
-  private SubSystemSIM mSubSystemSIM = new SubSystemSIM();
+  private SubSystemSIM mSubSystemSIM = new SubSystemSIM(drivebase);
 
   private int intakectn = 0;
   private final SendableChooser<Command> autoChooser;
@@ -135,33 +135,28 @@ public class RobotContainer
     /********** INTAKE **************************/
     activateCommandOnCondition(()-> driver.getAButton(), new InstantCommand(()-> intakectn++));
 
-    // activateCommandOnCondition(()-> intakectn==1, new SequentialCommandGroup(
-    //   Commands.runOnce(()-> Intake.setArticulated(-21.9,0.15,1)),
-    //   Commands.waitSeconds(0.3),
-    //   Commands.runOnce(()-> Intake.setIntakeSpeed(1)),
-    //   Commands.runOnce(()-> Intake.setBeltSpeed(0)),
-    //   Commands.runOnce(()-> Hood.setIndex(-0.05))));
-
-    // activateCommandOnCondition(()-> intakectn>=2, new SequentialCommandGroup(
-    //   Commands.runOnce(()-> Intake.setArticulated(0,0.3,0.25)),
-    //   Commands.runOnce(()-> Hood.setIndex(0)),
-    //   Commands.runOnce(()-> Intake.setBeltSpeed(0)),
-    //   Commands.runOnce(()-> Intake.setIntakeSpeed(1)),
-    //   new InstantCommand(()-> intakectn=0)));
-
     activateCommandOnCondition(()-> intakectn==1, new SequentialCommandGroup(
+      Commands.runOnce(() -> mSubSystemSIM.setIntakeVelocity(4)),
       Commands.runOnce(()-> mSubSystemSIM.setSubIntake(20, 0, 20)),
       Commands.runOnce(()-> mSubSystemSIM.setSubClimber(100, 0, 100))));
 
     activateCommandOnCondition(()-> intakectn>=2, new SequentialCommandGroup(
       Commands.runOnce(()-> mSubSystemSIM.setSubIntake(0, 0, 20)),
+      Commands.runOnce(() -> mSubSystemSIM.setIntakeVelocity(0)),
       new InstantCommand(()-> intakectn=0)));
+
+    Cmdriver.povLeft().onTrue(Commands.runOnce(() -> mSubSystemSIM.intakeVelocityCurrent(1)));
+    Cmdriver.povLeft().onTrue(Commands.runOnce(() -> mSubSystemSIM.shooterVelocityCurrent(3.2)));
 
     /********** HOOD **************************/
     Cmdriver.b().onTrue(new SequentialCommandGroup(
       Commands.runOnce(() -> Hood.stopShooterSpeed()),
       Commands.runOnce(() -> Hood.stopIndexSpeed()),
       Commands.runOnce(() -> Intake.setBeltSpeed(0))));
+
+    Cmdriver.y().onTrue(Commands.runOnce(() -> mHood.setShooterRPM(10)));
+    Cmdriver.y().onTrue(Commands.runOnce(() -> mHood.setIndexRPM(10)));
+    Cmdriver.y().onTrue(Commands.runOnce(() -> Intake.setBeltSpeed(0)));
 
     Cmdriver.leftBumper().whileTrue(mHood.repeatedly());
     Cmdriver.leftBumper().onFalse(Commands.runOnce(() -> mHood.end()));

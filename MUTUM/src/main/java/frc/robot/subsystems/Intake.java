@@ -2,28 +2,20 @@ package frc.robot.subsystems;
 
 import com.revrobotics.spark.SparkMax;
 
-import java.io.ObjectInputFilter.Config;
-
-import com.ctre.phoenix6.configs.Slot0Configs;
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
-import com.ctre.phoenix6.configs.TalonFXSConfiguration;
 import com.ctre.phoenix6.controls.PositionDutyCycle;
 import com.ctre.phoenix6.hardware.TalonFX;
-import com.ctre.phoenix6.hardware.TalonFXS;
 import com.ctre.phoenix6.signals.InvertedValue;
-import com.ctre.phoenix6.signals.MotorArrangementValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.revrobotics.PersistMode;
 import com.revrobotics.ResetMode;
 import com.revrobotics.spark.FeedbackSensor;
-import com.revrobotics.spark.SparkBase.ControlType;
 import com.revrobotics.spark.SparkClosedLoopController;
 import com.revrobotics.spark.SparkLowLevel.MotorType;
 import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
 
 import com.revrobotics.spark.config.SparkMaxConfig;
 
-import edu.wpi.first.math.geometry.Pose2d;
 
 public class Intake {
 
@@ -41,7 +33,7 @@ public class Intake {
     /* Belt END */
 
     public Intake(){
-        configArticulated(0.15, -1, 1, NeutralModeValue.Brake);
+        configArticulated(0.1, -0.1, 0.1, NeutralModeValue.Brake);
         configBelt(0.3, -1, 1);
     }
 
@@ -211,7 +203,7 @@ public class Intake {
     /**
     * Retorna a posição do Belt
     */
-    static public double getBelt(){
+    static public double getBeltPosition(){
         return mBelt.getEncoder().getPosition();
     }
 
