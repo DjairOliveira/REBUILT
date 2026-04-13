@@ -1,0 +1,156 @@
+{
+  "version": "2025.0",
+  "command": {
+    "type": "sequential",
+    "data": {
+      "commands": [
+        {
+          "type": "parallel",
+          "data": {
+            "commands": [
+              {
+                "type": "named",
+                "data": {
+                  "name": "LigarFlywheel"
+                }
+              },
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "1_AndaTras"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "parallel",
+          "data": {
+            "commands": [
+              {
+                "type": "named",
+                "data": {
+                  "name": "LigarFlywheel"
+                }
+              },
+              {
+                "type": "wait",
+                "data": {
+                  "waitTime": 0.2
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "ZerarErroOdometria"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "Atirar2.5Segundos"
+          }
+        },
+        {
+          "type": "parallel",
+          "data": {
+            "commands": [
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "3_GoOutPost"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "ClimbDescer170"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "wait",
+          "data": {
+            "waitTime": 1.0
+          }
+        },
+        {
+          "type": "parallel",
+          "data": {
+            "commands": [
+              {
+                "type": "path",
+                "data": {
+                  "pathName": "4_FimOutPost"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "LigarFlywheel"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "ClimbDescer170"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "ZerarErroOdometria"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "Atirar3.5Sec"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "ZerarErroOdometria"
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "5_GoClimb"
+          }
+        },
+        {
+          "type": "parallel",
+          "data": {
+            "commands": [
+              {
+                "type": "named",
+                "data": {
+                  "name": "ClimbSubir0"
+                }
+              },
+              {
+                "type": "named",
+                "data": {
+                  "name": "AlinharRodas"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "resetOdom": true,
+  "folder": null,
+  "choreoAuto": false
+}
