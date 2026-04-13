@@ -255,24 +255,18 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         }
 
         if(m_Control.getYButton()){
-            // double error = MathUtil.inputModulus(getPose().getRotation().minus(new Rotation2d(45)).getRadians(), -180, 180);
-
-            // double kP = 0.35;
-            // OmegaCmd = kP * error;
-
-            // OmegaCmd = MathUtil.clamp(OmegaCmd, -3, 3);
             double currentDeg = getHeading().getDegrees();
+            double targetDeg = 0;
 
-            // múltiplo de 45 mais próximo
-            double targetDeg = Math.round((currentDeg - 45) / 90.0) * 90.0 + 45;
+            if(currentDeg > 0 && currentDeg <= 90) targetDeg = 45;
+            else if(currentDeg > 90 && currentDeg <= 180) targetDeg = 135;
+            else if(currentDeg >= -90 && currentDeg < 0) targetDeg = -45;
+            else if(currentDeg >= -180 && currentDeg < -90) targetDeg = -135;
 
             Rotation2d targetAngle = Rotation2d.fromDegrees(targetDeg);
+            double error = MathUtil.angleModulus(targetAngle.minus(getHeading()).getRadians());
 
-            double error = MathUtil.angleModulus(
-                targetAngle.minus(getHeading()).getRadians()
-            );
-
-            double kP = 0.35;
+            double kP = 10;
             OmegaCmd = -kP * error;
 
             OmegaCmd = MathUtil.clamp(OmegaCmd, -3, 3);
