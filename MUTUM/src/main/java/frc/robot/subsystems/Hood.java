@@ -36,7 +36,10 @@ import org.littletonrobotics.junction.Logger;
 public class Hood extends Command {
 
     private static double startTime;
+    private static double timerShot;
     private boolean aligned = false;
+    private boolean articulaAux = false;
+    private boolean ctrAligned = true;
 
     /* Shooter INIT */
     public static final TalonFX mShooterR = new TalonFX(22);
@@ -79,6 +82,7 @@ public class Hood extends Command {
 
         double blueX = 4.298;   // Aliança
         double redX = 12.41;    // Aliança
+
         double targetX = 0;
         double targetY = 0;
         double targetZ = 0;
@@ -122,8 +126,8 @@ public class Hood extends Command {
             speedBelt = 0;
 
         }else{
-            // poseHood = map(parabola(distanceHood, targetX, targetY, targetZ), 40, 80, -110, -70); Simulação
-            poseHood = Robot.auxiliar.getDouble(0);
+            poseHood = map(parabola(distanceHood, targetX, targetY, targetZ), 40, 80, -110, -70); ///Simulação
+            // poseHood = Robot.auxiliar.getDouble(0);
             RPMShooter = Robot.velocityTiro.getDouble(0.05);
         }
         /* Proteção da treanch - END */
@@ -136,14 +140,23 @@ public class Hood extends Command {
         boolean RPMIndexOK = (targetRPMIndex - velocityIndex[0]) < 1.5 ? true : false;
 
         if(aligned){
+            if(ctrAligned) {
+                timerShot = Timer.getFPGATimestamp();
+                ctrAligned=false;
+            }
             if (RPMShooterOK) RPMIndex = 0.05; //Colocar valor para Indexar
             else RPMIndex = 0;
 
             if(RPMShooterOK && RPMIndexOK) speedBelt = 0.05;
             else speedBelt = 0;
+
+            articulaAux = Timer.getFPGATimestamp() - timerShot > 2 ? true : false;
+
         }else{
             RPMIndex = 0;
             speedBelt = 0;
+            timerShot = Timer.getFPGATimestamp();
+            articulaAux = false;
         }
 
         setIndexer(RPMIndex, speedBelt);
@@ -172,12 +185,20 @@ public class Hood extends Command {
         Intake.setBeltSpeed(0);
 
         SubSystemSIM.setShooterVelocity(0);
+        aligned=false;
+        articulaAux=false;
+        ctrAligned=true;
+
+        NetworkTableInstance.getDefault().getTable("HOOD").getEntry("Aling").setBoolean(aligned);
+    }
+
+    public boolean getarticulaAux(){
+        return articulaAux;
     }
 
     private void setLogger(){
         Logger.recordOutput("Turret/VerticalPosition", getHoodPositon());
-        Logger.recordOutput("Turret/ShooterRight", mShooterL.getVelocity().getValueAsDouble());
-        Logger.recordOutput("Turret/ShooterLeft", mShooterR.getVelocity().getValueAsDouble());
+        Logger.recordOutput("Turret/Shooter", getShooterVelocity());
     }
 
     public static double getAngleHood(){
@@ -312,7 +333,7 @@ public class Hood extends Command {
 
         OmegaCmd = MathUtil.clamp(OmegaCmd, -3, 3);
 
-        aligned = Math.abs(error) < Math.toRadians(3);
+        aligned = Math.abs(error) < Math.toRadians(6.5);
 
 
         NetworkTableInstance.getDefault().getTable("ROBOT").getEntry("Hood").setDoubleArray(new double[] {

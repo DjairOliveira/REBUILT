@@ -34,11 +34,12 @@ public class Intake {
 
     public Intake(){
         configArticulated(0.1, -0.1, 0.1, NeutralModeValue.Brake);
-        configBelt(0.3, -1, 1);
+        configIntake(0.1, -0.1, 0.1);
+        configBelt(0.1, -0.1, 0.1);
     }
 
     /**
-    * Configura a posição da articulação do intake.
+    * Configura o intake.
     * @motor @param type 2 x Kraken X60
     * @param KP Ganho proporcional do sistema.
     * @param OutMin Valor de saida minimo do motor [LIMITE = -1].

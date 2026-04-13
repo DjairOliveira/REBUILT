@@ -1,0 +1,230 @@
+{
+  "hubs": [
+    {
+      "x": 217,
+      "y": 106,
+      "width": 1105,
+      "height": 654,
+      "state": {
+        "sidebar": {
+          "width": 310,
+          "expanded": [
+            "/SmartDashboard/Field/Robot",
+            "/SmartDashboard/swerve/modules/backleft",
+            "/SmartDashboard/swerve/modules/backright",
+            "/PathPlanner/currentPose",
+            "/PathPlanner/currentPose/translation",
+            "/PathPlanner/currentPose/rotation",
+            "/PathPlanner/targetPose",
+            "/PathPlanner/targetPose/rotation",
+            "/PathPlanner/targetPose/translation",
+            "/ROBOT/TURRET",
+            "/FIELD",
+            "/PathPlanner/vel",
+            "/SmartDashboard/Field/OdometryPose",
+            "/RealOutputs",
+            "/AdvantageKit/RealOutputs/Robo/Odometry",
+            "/RealOutputs/Robo",
+            "/RealOutputs/Turret",
+            "/AdvantageKit/RealOutputs/Turret/turretTargetAngle_FUTURE",
+            "/Spark-20",
+            "/Spark-15",
+            "/RealOutputs/Robo/Odometry",
+            "/SmartDashboard/ElevatorSim",
+            "/SmartDashboard/ElevatorSim/base",
+            "/SmartDashboard/ElevatorSim/dims",
+            "/AdvantageKit/RealOutputs/SubSystemHood/0",
+            "/AdvantageKit/RealOutputs/SubSystemHood/0/translation",
+            "/SmartDashboard/Motors",
+            "/ShotTrajectory",
+            "/Trajetoria",
+            "/Trajetoria/Shoot",
+            "/Trajetoria/Shoot/10",
+            "/Trajetoria/Shoot/5",
+            "/AdvantageKit",
+            "/AdvantageKit/RealOutputs",
+            "/AdvantageKit/RealOutputs/Fuel/0",
+            "/AdvantageKit/RealOutputs/Fuel/0/rotation",
+            "/AdvantageKit/RealOutputs/Fuel/0/rotation/q",
+            "/AdvantageKit/RealOutputs/Fuel/0/translation"
+          ]
+        },
+        "tabs": {
+          "selected": 3,
+          "tabs": [
+            {
+              "type": 0,
+              "title": "",
+              "controller": null,
+              "controllerUUID": "f0cyjrek39o4dld4nejn5fju6egtn14z",
+              "renderer": "",
+              "controlsHeight": 0
+            },
+            {
+              "type": 1,
+              "title": "Line Graph",
+              "controller": {
+                "leftSources": [],
+                "rightSources": [],
+                "discreteSources": [],
+                "leftLockedRange": null,
+                "rightLockedRange": null,
+                "leftUnitConversion": {
+                  "autoTarget": null,
+                  "preset": null
+                },
+                "rightUnitConversion": {
+                  "autoTarget": null,
+                  "preset": null
+                },
+                "leftFilter": 0,
+                "rightFilter": 0
+              },
+              "controllerUUID": "hwk6cp2zxkqdgos6oqflu8ilst7zlonc",
+              "renderer": null,
+              "controlsHeight": 200
+            },
+            {
+              "type": 2,
+              "title": "2D Field",
+              "controller": {
+                "sources": [
+                  {
+                    "type": "robotLegacy",
+                    "logKey": "NT:/ROBOT/OdometryRobot",
+                    "logType": "NumberArray",
+                    "visible": true,
+                    "options": {
+                      "bumpers": "#ff8c00",
+                      "format": "Pose2d",
+                      "units": "radians"
+                    }
+                  },
+                  {
+                    "type": "visionLegacy",
+                    "logKey": "NT:/FIELD/Target",
+                    "logType": "NumberArray",
+                    "visible": true,
+                    "options": {
+                      "color": "#00ff00",
+                      "size": "normal",
+                      "format": "Pose2d"
+                    }
+                  },
+                  {
+                    "type": "arrowLegacy",
+                    "logKey": "NT:/ROBOT/Hood",
+                    "logType": "NumberArray",
+                    "visible": true,
+                    "options": {
+                      "position": "center",
+                      "format": "Pose2d",
+                      "units": "radians"
+                    }
+                  }
+                ],
+                "field": "FRC:2026 Field",
+                "orientation": 2,
+                "size": "small"
+              },
+              "controllerUUID": "7ombr8ynrmwqc82jrqkyylhyvcrs8y6i",
+              "renderer": null,
+              "controlsHeight": 207
+            },
+            {
+              "type": 3,
+              "title": "3D Field",
+              "controller": {
+                "sources": [
+                  {
+                    "type": "robotLegacy",
+                    "logKey": "NT:/ROBOT/OdometryRobot",
+                    "logType": "NumberArray",
+                    "visible": true,
+                    "options": {
+                      "model": "2026 KitBot",
+                      "format": "Pose2d",
+                      "units": "radians"
+                    }
+                  },
+                  {
+                    "type": "component",
+                    "logKey": "NT:/AdvantageKit/RealOutputs/SubSystemHood",
+                    "logType": "Pose3d[]",
+                    "visible": true,
+                    "options": {}
+                  },
+                  {
+                    "type": "component",
+                    "logKey": "NT:/AdvantageKit/RealOutputs/SubSystemIntake",
+                    "logType": "Pose3d[]",
+                    "visible": true,
+                    "options": {}
+                  },
+                  {
+                    "type": "component",
+                    "logKey": "NT:/AdvantageKit/RealOutputs/SubSystemGaveta",
+                    "logType": "Pose3d[]",
+                    "visible": true,
+                    "options": {}
+                  },
+                  {
+                    "type": "component",
+                    "logKey": "NT:/AdvantageKit/RealOutputs/SubSystemClimber",
+                    "logType": "Pose3d[]",
+                    "visible": true,
+                    "options": {}
+                  },
+                  {
+                    "type": "gamePiece",
+                    "logKey": "NT:/AdvantageKit/RealOutputs/ShotTrajectory",
+                    "logType": "Pose3d[]",
+                    "visible": true,
+                    "options": {
+                      "variant": "Fuel"
+                    }
+                  }
+                ],
+                "game": "FRC:2026 Field"
+              },
+              "controllerUUID": "dasg787vlqq18is2upu184pmd2miy82i",
+              "renderer": {
+                "cameraIndex": -1,
+                "orbitFov": 50,
+                "cameraPosition": [
+                  4.4749064086565085,
+                  2.026688000178265,
+                  4.498835349910889
+                ],
+                "cameraTarget": [
+                  6.776249257156668,
+                  0.5208369735222882,
+                  0.9826021056708636
+                ]
+              },
+              "controlsHeight": 208
+            },
+            {
+              "type": 10,
+              "title": "Mechanism",
+              "controller": [
+                {
+                  "type": "mechanism",
+                  "logKey": "NT:/SmartDashboard/ElevatorSim",
+                  "logType": "Mechanism2d",
+                  "visible": true,
+                  "options": {}
+                }
+              ],
+              "controllerUUID": "0xjfg31y6l43ym4244qgojh8ccrkbo4e",
+              "renderer": null,
+              "controlsHeight": 200
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "satellites": [],
+  "version": "26.0.1"
+}

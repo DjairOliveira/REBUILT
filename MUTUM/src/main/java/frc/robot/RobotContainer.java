@@ -137,16 +137,23 @@ public class RobotContainer
 
     activateCommandOnCondition(()-> intakectn==1, new SequentialCommandGroup(
       Commands.runOnce(() -> mSubSystemSIM.setIntakeVelocity(4)),
-      Commands.runOnce(()-> mSubSystemSIM.setSubIntake(20, 0, 20)),
-      Commands.runOnce(()-> mSubSystemSIM.setSubClimber(100, 0, 100))));
+      Commands.runOnce(()-> mSubSystemSIM.setSubIntake(20, 3, 0, 20)),
+      Commands.runOnce(()-> mSubSystemSIM.setSubClimber(100, 5, 0, 100))));
 
     activateCommandOnCondition(()-> intakectn>=2, new SequentialCommandGroup(
-      Commands.runOnce(()-> mSubSystemSIM.setSubIntake(0, 0, 20)),
+      Commands.runOnce(()-> mSubSystemSIM.setSubIntake(0, 3, 0, 20)),
       Commands.runOnce(() -> mSubSystemSIM.setIntakeVelocity(0)),
       new InstantCommand(()-> intakectn=0)));
 
     Cmdriver.povLeft().onTrue(Commands.runOnce(() -> mSubSystemSIM.intakeVelocityCurrent(1)));
     Cmdriver.povLeft().onTrue(Commands.runOnce(() -> mSubSystemSIM.shooterVelocityCurrent(3.2)));
+
+    activateCommandOnCondition(()-> mHood.getarticulaAux(), new SequentialCommandGroup(
+      new InstantCommand(()-> mSubSystemSIM.setSubIntake(14, 1, 0, 20)),
+      new InstantCommand(()-> intakectn=0)));
+      
+    activateCommandOnCondition(()-> mHood.getarticulaAux(), new InstantCommand(()-> mSubSystemSIM.setSubClimber(0, 1, 0, 100)));
+
 
     /********** HOOD **************************/
     Cmdriver.b().onTrue(new SequentialCommandGroup(
@@ -165,8 +172,8 @@ public class RobotContainer
     // Cmdriver.povDown().onTrue(Commands.runOnce(() -> mClimber.setPosition(0, 1))); //359 max alto
     // Cmdriver.povUp().onTrue(Commands.runOnce(() -> mClimber.setPosition(-350, 1)));
 
-    Cmdriver.povUp().onTrue(Commands.runOnce(() -> mSubSystemSIM.setSubClimber(100, 0, 100)));
-    Cmdriver.povDown().onTrue(Commands.runOnce(() -> mSubSystemSIM.setSubClimber(0, 0, 100)));
+    Cmdriver.povUp().onTrue(Commands.runOnce(() -> mSubSystemSIM.setSubClimber(100, 5, 0, 100)));
+    Cmdriver.povDown().onTrue(Commands.runOnce(() -> mSubSystemSIM.setSubClimber(0, 5, 0, 100)));
     
   } 
 
