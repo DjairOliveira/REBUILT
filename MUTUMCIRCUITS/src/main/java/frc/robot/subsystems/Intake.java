@@ -32,15 +32,9 @@ public class Intake {
     public static PositionDutyCycle pidCtrArticulated = new PositionDutyCycle(0);
     /* Intake END */
 
-    /* Belt INIT */
-    // public static final SparkMax mBelt = new SparkMax(18, MotorType.kBrushless);
-    // public static SparkClosedLoopController pidCtrBelt;
-    /* Belt END */
-
     public Intake(){
         configArticulated(0.1, -0.1, 0.1, NeutralModeValue.Brake);
         configIntake(0.1, -0.1, 0.1);
-        // configBelt(0.1, -0.1, 0.1);
     }
 
     /**
@@ -145,7 +139,7 @@ public class Intake {
     public static void configArticulated(double KP, double OutMin, double OutMax, NeutralModeValue kMode) {
        TalonFXConfiguration cfg = new TalonFXConfiguration();
 
-        cfg.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
+        cfg.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
 
         cfg.MotorOutput.NeutralMode = NeutralModeValue.Brake;
 
@@ -173,6 +167,10 @@ public class Intake {
         return mArticulated.getPosition().getValueAsDouble();
     }
 
+    public void setZeroArticulated(){
+            mArticulated.setPosition(0);
+    }
+
     /**
     * @return a velocidade da articulação do intake.
     */
@@ -183,7 +181,7 @@ public class Intake {
     /**
     * Configura a posição da articulação do intake.
     * @param kP Ganho proporcional do sistema.
-    * @param position Valor da posição desejada.
+    * @param position Valor da posição desejada [MIN = 0 - MAX = 22.394].
     * @param speed Valor de velocidade maxima e minima do motor [LIMITE = 1 a -1].
     */
     public static void setArticulated(double kP, double position, double speed) {
@@ -198,55 +196,4 @@ public class Intake {
         configArticulated(0, 0, 0, NeutralModeValue.Coast);
         mArticulated.set(0);
     }
-
-    // /**
-    // * Configura a posição da articulação do intake.
-    // * @motor @param type 1 x NEO
-    // * @param kP Ganho proporcional do sistema.
-    // * @param OutMin Valor de velocidade minima do motor [LIMITE = -1].
-    // * @param OutMax Valor de velocidade maxima do motor [LIMITE = 1].
-    // */
-    // static void configBelt(double kP, double OutMin, double OutMax){
-    //     SparkMaxConfig cfgBelt = new SparkMaxConfig();
-
-    //     cfgBelt.inverted(false).idleMode(IdleMode.kBrake);
-    //     cfgBelt.openLoopRampRate(0.25);
-    //     cfgBelt.encoder.positionConversionFactor(1).velocityConversionFactor(1);
-    //     cfgBelt.closedLoop
-    //     .feedbackSensor(FeedbackSensor.kPrimaryEncoder)
-    //     .pid(kP, 0.0, 0.0)
-    //     .outputRange(OutMin, OutMax);
-
-    //     mBelt.configure(cfgBelt, ResetMode.kResetSafeParameters, PersistMode.kPersistParameters);
-    //     pidCtrBelt = mBelt.getClosedLoopController();
-    // }
-
-    // /**
-    // * @return a posição do Belt
-    // */
-    // static public double getBeltPosition(){
-    //     return mBelt.getEncoder().getPosition();
-    // }
-
-    // /**
-    // * @return a velocidade de Belt.
-    // */
-    // static public double getBeltVelocity(){
-    //     return mBelt.getEncoder().getVelocity();
-    // }
-
-    // /**
-    // * @return a velocidade de Belt.
-    // * @param speed Velocidade do Belt [LIMITE = 1 a -1]
-    // */
-    // static public void setBeltSpeed(double speed){
-    //     mBelt.set(speed);
-    // }
-
-    // /**
-    // * Desliga o Belt
-    // */
-    // static public void stopBelt(){
-    //     mBelt.set(0);
-    // }
 }

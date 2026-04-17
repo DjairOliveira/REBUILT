@@ -29,8 +29,8 @@ public final class Constants {
   // ==========================================================
   // Baseado no teste de levantar o robô e dar 6 voltas:
   // O robô deu 6 voltas físicas (2160º), mas o Pigeon leu 2172º.
-  public static final double GRAUS_REAIS = 2160.0;
-  public static final double GRAUS_PIGEON = 2148.0; 
+  public static final double GRAUS_REAIS = 1800.0;
+  public static final double GRAUS_PIGEON = 1790.0;
   
   // Este fator será usado automaticamente no Drivetrain e no Piloto
   public static final double FATOR_ESCALA_PIGEON = GRAUS_REAIS / GRAUS_PIGEON;

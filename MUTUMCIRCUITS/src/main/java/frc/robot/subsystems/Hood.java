@@ -25,16 +25,19 @@ import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Robot;
+import frc.robot.RobotContainer;
 
 import org.littletonrobotics.junction.Logger;
 
 public class Hood extends Command {
+    private Intake mIntake;
 
     private static double startTime;
     private static double timerShot;
     private boolean aligned = false;
     private boolean articulaAux = false;
     private boolean ctrAligned = true;
+    private boolean ctrShotOk = false;
 
     /* Shooter INIT */
     public static final TalonFX mShooterR = new TalonFX(22);
@@ -49,11 +52,20 @@ public class Hood extends Command {
     /* Hood END */
 
     /* Index INIT */
-    public static TalonFX mIndexL = new TalonFX(19);
-    public static TalonFX mIndexR = new TalonFX(20);
+    public static TalonFX mFeed = new TalonFX(19);
+    public static TalonFX mIndex = new TalonFX(20);
     public static final VelocityVoltage indexControl = new VelocityVoltage(0).withSlot(0);
     private double targetRPMIndex = 0.0;
+    private double targetRPMFeeder = 0.0;
     /* Index END */
+
+    /* Belt INIT */
+
+    public static TalonFX mBelt = new TalonFX(18);
+    public static final VelocityVoltage beltControl = new VelocityVoltage(0).withSlot(0);
+    private double targetRPMBelt = 0.0;
+
+    /* Belt END */
 
     public static double OmegaCmd = 0;
     public static double angleTurretSim = 0;
@@ -61,8 +73,8 @@ public class Hood extends Command {
 
     public double tHigh = 5, tLow = 2, tArticula = 10;
 
-    double[] distances = {0.7, 1.05, 1.35, 1.65, 2, 2.551, 3.089, 3.52, 4.027, 4.635, 5.19, 5.7};
-    double[] speed = {-0.4,-0.42,-0.44, -0.46, -0.485, -0.5, -0.525, -0.54, -0.5625, -0.59, -0.63, -0.65};
+    double[] distances = {1.15, 1.42, 1.82, 2.15, 2.44, 2.83, 3.32, 3.54, 4, 4.45, 4.97};
+    double[] RPM = {3300, 3600, 3600, 3750, 3800, 3900, 4200, 4600, 4775, 4925, 5100};
 
     private final CommandSwerveDrivetrain swerve;
 
@@ -70,9 +82,10 @@ public class Hood extends Command {
 
     public Hood(CommandSwerveDrivetrain swerve) {
         this.swerve = swerve;
-        configHood(0.05, -0.1, 0.1);
+        configHood(0.5, -0.05, 0.3);
         configIndex(NeutralModeValue.Coast);
-        configShooter(NeutralModeValue.Coast);
+        configShooter(0.435, NeutralModeValue.Coast);
+        configBelt(0.1, -0.1, 0.1);
     }
 
     public void execute() {
@@ -84,7 +97,7 @@ public class Hood extends Command {
         double targetY = 0;
         double targetZ = 0;
 
-        double RPMShooter = 0, speedBelt = 0, RPMIndex = 0;
+        double RPMShooter = 0, RPMBelt = 0, RPMIndex = 0;
 
         Pose2d robotPose = swerve.getPose();
 
@@ -95,7 +108,7 @@ public class Hood extends Command {
         if((!isRedAlliance() && robotPose.getX() <= blueX) || (isRedAlliance() && robotPose.getX() >= redX)){
             targetX = isRedAlliance() ? 11.914 : 4.624;
             targetY = 4.044;
-            targetZ = 1.63;
+            targetZ = 1.63;//1.63
         }
         else if((!isRedAlliance() && robotPose.getX() > blueX + 1.4) || (isRedAlliance() && robotPose.getX() < redX - 1.4)){
             if((robotPose.getY() - 4.044) >= 0) targetY = 6;
@@ -119,21 +132,22 @@ public class Hood extends Command {
             poseHood = 0;
             RPMShooter = 0;
             RPMIndex = 0;
-            speedBelt = 0;
-
+            RPMBelt = 0;
         }else{
-            poseHoodSim = map(parabola(distanceHood, targetX, targetY, targetZ), 40, 80, -110, -70);
-            poseHood = Robot.auxiliar.getDouble(0);
-            RPMShooter = Robot.RPMShooter.getDouble(0.05);
+            poseHoodSim = map(parabola(distanceHood, 0.6, targetX, targetY, targetZ), 40, 80, -110, -70);
+            poseHood = map(parabola(distanceHood, distanceHood < 3.45 ? 0.6 : 1, targetX, targetY, targetZ), 79.5, 40.1, 0, 1.85);
+            
+            RPMShooter = Robot.RPMShooter.getDouble(0.0);
         }
         /* Proteção da treanch - END */
 
         setHoodPosition(poseHood);
-        setShooterRPM(RPMShooter);
+        setShooterRPM(interpolate(distanceHood, distances, RPM));
+
         SubSystemSIM.setShooterVelocity(3.65);
 
-        boolean RPMShooterOK = (targetRPMShooter - velocityShooter[0]) < 1.5 ? true : false;
-        boolean RPMIndexOK = (targetRPMIndex - velocityIndex[0]) < 1.5 ? true : false;
+        boolean RPMShooterOK = (Math.abs(targetRPMShooter - velocityShooter[0]) * 60) < 100 ? true : false;
+        boolean RPMIndexOK = ((targetRPMIndex - velocityIndex[1]) * 60) < 100 ? true : false;
 
         if(aligned){
             if(ctrAligned) {
@@ -141,29 +155,47 @@ public class Hood extends Command {
                 tArticula = Timer.getFPGATimestamp();
                 ctrAligned=false;
             }
-            if (RPMShooterOK) RPMIndex = 10; //Colocar valor para Indexar
-            else RPMIndex = 0;
 
-            if(RPMShooterOK && RPMIndexOK) speedBelt = 0.05;
+            if (RPMShooterOK && errorTimer(timerShot) > 0.75) {
+                ctrShotOk = true;
+                RPMIndex = (Robot.RPMShooter.getDouble(0.0) / 2) - 500; //Colocar valor para Indexar
+                RPMBelt = 4000;
+            }
             else {
-                speedBelt = 0;
-                timerShot = Timer.getFPGATimestamp();
+                RPMIndex = 0;
+                RPMBelt = 0;
+                // timerShot = Timer.getFPGATimestamp();
             }
 
-            // articulaAux = Timer.getFPGATimestamp() - timerShot > 2 ? true : false;
+            // if(ctrShotOk){
+            //     ;
+            //     ctrShotOk = false;
+            // }
 
-            /* esta aqui por conta da simulação */
-            if(errorTimer(tArticula) < tHigh) articulaAux = true;
-            else if(errorTimer(tArticula) >= tHigh && errorTimer(tArticula) < tHigh + tLow) articulaAux = false;
+            // if(RPMShooterOK && RPMIndexOK) RPMBelt = 2000;
+            // else {
+            //     RPMBelt = 0;
+            //     timerShot = Timer.getFPGATimestamp();
+            // }
+
+            // articulaAux = Timer.getFPGATimestamp() - timerShot > 1.5 ? true : false;
+            
+            tHigh = 2;
+            tLow = 1;
+            if(errorTimer(tArticula) < tHigh) articulaAux = false;
+            else if(errorTimer(tArticula) >= tHigh && errorTimer(tArticula) < tHigh + tLow) articulaAux = true;
             else tArticula = Timer.getFPGATimestamp();
+
+            Logger.recordOutput("HOOD/TIMERGULOSO", errorTimer(tArticula));
+            
 
         }else{
             RPMIndex = 0;
-            speedBelt = 0;
+            RPMBelt = 0;
             articulaAux = false;
         }
 
-        setIndexer(RPMIndex, speedBelt);
+        setIndexer(RPMIndex, RPMBelt);
 
         if((targetRPMShooter - velocityShooter[0]) > 0.5){
             startTime = Timer.getFPGATimestamp();
@@ -171,11 +203,27 @@ public class Hood extends Command {
 
         Logger.recordOutput("HOOD/getArticular", getarticulaAux());
         Logger.recordOutput("HOOD/TimerArticular", errorTimer(tArticula));
+
+        Logger.recordOutput("HOOD/RPMShooterOK", RPMShooterOK);
+        Logger.recordOutput("HOOD/RPMIndexOK", RPMIndexOK);
+        Logger.recordOutput("HOOD/RPMIndex", RPMIndex);
+        Logger.recordOutput("HOOD/RPMBelt", RPMBelt);
+
+        Logger.recordOutput("HOOD/targetRPMShooter", targetRPMShooter);
+        Logger.recordOutput("HOOD/targetRPMIndex", targetRPMIndex);
+        
+
         Logger.recordOutput("HOOD/DistanceHUB", distanceHood);
-        Logger.recordOutput("HOOD/IntepolationRPM", interpolate(distanceHood, distances, speed));
-        Logger.recordOutput("HOOD/AngleParabola", parabola(distanceHood, targetX, targetY, targetZ));
+        Logger.recordOutput("HOOD/IntepolationRPM", interpolate(distanceHood, distances, RPM));
+        Logger.recordOutput("HOOD/AngleParabola", parabola(distanceHood, distanceHood < 3.45 ? 0.6 : 1, targetX, targetY, targetZ));
         Logger.recordOutput("HOOD/Position", getHoodPositon());
-        Logger.recordOutput("HOOD/ShooterRPM", getShooterVelocity());
+        Logger.recordOutput("HOOD/Shooter1RPM", getShooterVelocity()[0] * 60);
+        Logger.recordOutput("HOOD/Shooter2RPM", getShooterVelocity()[1] * 60);
+        Logger.recordOutput("HOOD/FeedRPM", getIndexVelocity()[0] * 60);
+        Logger.recordOutput("HOOD/IndexRPM", getIndexVelocity()[1] * 60);
+        Logger.recordOutput("HOOD/BeltRPM", getBeltVelocity() * 60);
+        Logger.recordOutput("HOOD/Aligned", aligned);
+
     }
 
     public boolean isFinished() {
@@ -184,15 +232,20 @@ public class Hood extends Command {
 
     public void end() {
         setHoodPosition(0);
-        mShooterL.set(-0.2);
-        mShooterR.set(-0.2);
-        setIndex(0);
-        // Intake.setBeltSpeed(0);
+        stopShooterSpeed();
+        stopIndexSpeed();
+        stopBelt();
+
+        // setShooterRPM(0);
+        // setIndexRPM(0);
+        // setBeltRPM(0);
+        // setFeedRPM(0);
 
         SubSystemSIM.setShooterVelocity(0);
         aligned=false;
         articulaAux=false;
         ctrAligned=true;
+        ctrShotOk = false;
 
         Logger.recordOutput("HOOD/Aligned", aligned);
     }
@@ -201,18 +254,11 @@ public class Hood extends Command {
     * @return true se o intake puder articular para ajudar no disparo.
     */
     public boolean getarticulaAux(){
-        return articulaAux && SubSystemSIM.getSubIntake() > 14;
+        return articulaAux && Intake.getArticulatedPosition() > 9;
     }
 
     private double errorTimer(double tTarget){
         return Timer.getFPGATimestamp() - tTarget;
-    }
-
-    public boolean getarticulaAux(double tHigh, double tLow){
-        this.tHigh = tHigh;
-        this.tLow = tLow;
-        
-        return articulaAux;  //SubSystemSIM.getSubIntake() < 45
     }
 
     /**
@@ -228,10 +274,10 @@ public class Hood extends Command {
     * @param index Speed do index.
     * @param belt Speed belt.
     */
-    private void setIndexer (double RPMIndex, double belt){
+    private void setIndexer (double RPMIndex, double RPMbelt){
         setIndexRPM(RPMIndex);
-        // Intake.setBeltSpeed(belt);
-
+        setFeedRPM(RPMIndex / 2);
+        setBeltRPM(RPMbelt);
     }
 
     /**
@@ -256,7 +302,7 @@ public class Hood extends Command {
     * @param initH Altura inicial da Fuel (Momento de saida do shooter do robô);
     * @param maxH Alura maxima do Fuel durante a trajetória.
     */
-    public double parabola (double distHoodToHUB, double Target_X, double Target_Y, double Target_Z) {
+    public double parabola (double distHoodToHUB, double hZoide, double Target_X, double Target_Y, double Target_Z) {
         Pose2d robot_getValues = swerve.getPose();
         Translation2d robot_pose = robot_getValues.getTranslation();
         Translation2d pose_Target = new Translation2d(Target_X , Target_Y);
@@ -268,7 +314,8 @@ public class Hood extends Command {
 
         double targetH = Target_Z;//1.63
         double initH = 0.518;
-        double maxH = hHUB + Robot.setHmax.getDouble(1);
+        // double maxH = hHUB + Robot.setHmax.getDouble(1);
+        double maxH = hHUB + hZoide;
 
         double delta_T = 0, a_T = 0, b_T = 0, c_T = targetH - initH;  //1.112
         double tan_angle_T = 0;
@@ -287,6 +334,7 @@ public class Hood extends Command {
         );
 
         Logger.recordOutput("ShotTrajectory", traj);
+        Logger.recordOutput("Parabola", Math.toDegrees(Math.atan(tan_angle_T)));
 
         return Math.toDegrees(Math.atan(tan_angle_T));
     }
@@ -344,10 +392,13 @@ public class Hood extends Command {
         Translation2d angleHoodHub = pose_Target.minus(poseHood);
         Rotation2d targetAngleHood = angleHoodHub.getAngle();
 
+        Translation2d angleHub = pose_Target.minus(robot_pose);
+        Rotation2d targetAngleRobot = angleHub.getAngle();
+
         double error = MathUtil.angleModulus(targetAngleHood.minus(Robot_Yaw).getRadians());
 
-        double kP = 10;
-        OmegaCmd = -kP * error;
+        double kP = 0.75; ///double kP = 1.25;
+        OmegaCmd = kP * error;
 
         OmegaCmd = MathUtil.clamp(OmegaCmd, -3, 3);
 
@@ -374,7 +425,7 @@ public class Hood extends Command {
     /**
     * @return valor do angulo que o robo deve atingir em Yaw para se alinhar com o HUB.
     */
-    public double getOmega(){
+    public static double getOmega(){
         return OmegaCmd;
     }
 
@@ -412,7 +463,7 @@ public class Hood extends Command {
     * @motor 2 x Kraken X60 opostos um ao outro.
     * @param kMode Define o freio do motor coast ou brake.
     */
-    public static void configShooter(NeutralModeValue kMode) {
+    public static void configShooter(double kP, NeutralModeValue kMode) {
         
         TalonFXConfiguration cfgShooterL = new TalonFXConfiguration();
         TalonFXConfiguration cfgShooterR = new TalonFXConfiguration();
@@ -430,6 +481,10 @@ public class Hood extends Command {
         cfgShooterL.Voltage.PeakForwardVoltage = 12;
         cfgShooterL.Voltage.PeakReverseVoltage = -12;
 
+        cfgShooterL.Slot0.kP = kP;
+        cfgShooterL.Slot0.kI = 0.0;
+        cfgShooterL.Slot0.kD = 0.0;
+
         cfgShooterR.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
         cfgShooterR.OpenLoopRamps.DutyCycleOpenLoopRampPeriod = 0;
 
@@ -442,6 +497,10 @@ public class Hood extends Command {
         cfgShooterR.MotorOutput.DutyCycleNeutralDeadband = 0;
         cfgShooterR.Voltage.PeakForwardVoltage = 12;
         cfgShooterR.Voltage.PeakReverseVoltage = -12;
+
+        cfgShooterR.Slot0.kP = kP;
+        cfgShooterR.Slot0.kI = 0.0;
+        cfgShooterR.Slot0.kD = 0.0;
 
         mShooterL.getConfigurator().apply(cfgShooterL);
         mShooterR.getConfigurator().apply(cfgShooterR);
@@ -469,13 +528,18 @@ public class Hood extends Command {
             mShooterR.getVelocity().getValueAsDouble()};
     }
 
+    public void setZeroShooter(){
+        mShooterL.setPosition(0);
+        mShooterR.setPosition(0);
+    }
+
     /**
     * Para os motores do Shooter e configura o motor em modo coast.
     *
     * @param null
     */
     static public void stopShooterSpeed() {
-        configShooter(NeutralModeValue.Coast);
+        configShooter(0.11, NeutralModeValue.Coast);
         mShooterL.stopMotor();
         mShooterR.stopMotor();
     }
@@ -500,7 +564,7 @@ public class Hood extends Command {
         setpointRPM = MathUtil.clamp(setpointRPM, 0, 6000);
 
         this.targetRPMShooter = setpointRPM / 60.0;
-        double kV = 0.115;
+        double kV = 0.118;
         double VoltageFeedFoward = this.targetRPMShooter * kV;
         mShooterL.setControl(shooterControl.withVelocity(targetRPMShooter).withFeedForward(VoltageFeedFoward));
         mShooterR.setControl(shooterControl.withVelocity(targetRPMShooter).withFeedForward(VoltageFeedFoward));
@@ -548,11 +612,16 @@ public class Hood extends Command {
         return mHood.getPosition().getValueAsDouble();
     }
 
+    public void setZeroHood(){
+            mHood.setPosition(0);
+    }
+
     /**
     * Define a posição do motor do Hood, considerando tambem não estar de baixo da Treanch
-    * @param position Posição do Hood.
+    * @param position Posição do Hood [MIN = 0 - MAX = 1.85].
     */
     public void setHoodPosition(double position) {
+        position = MathUtil.clamp(position, 0, 1.85);
         mHood.setControl(pidCtrHood.withPosition(position));
     }
 
@@ -563,37 +632,45 @@ public class Hood extends Command {
     */
     public static void configIndex(NeutralModeValue kMode) {
         
-        TalonFXConfiguration cfgIndexL = new TalonFXConfiguration();
-        TalonFXConfiguration cfgIndexR = new TalonFXConfiguration();
+        TalonFXConfiguration cfgFeed = new TalonFXConfiguration();
+        TalonFXConfiguration cfgIndex = new TalonFXConfiguration();
         
-        cfgIndexL.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
-        cfgIndexL.OpenLoopRamps.DutyCycleOpenLoopRampPeriod = 0;
+        cfgFeed.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
+        cfgFeed.OpenLoopRamps.DutyCycleOpenLoopRampPeriod = 0;
 
-        cfgIndexL.MotorOutput.NeutralMode = kMode;
-        cfgIndexL.CurrentLimits.SupplyCurrentLimit = 80;
-        cfgIndexL.CurrentLimits.SupplyCurrentLimitEnable = false;
-        cfgIndexL.Feedback.SensorToMechanismRatio = 1.0;
-        cfgIndexL.MotorOutput.PeakForwardDutyCycle = 1;
-        cfgIndexL.MotorOutput.PeakReverseDutyCycle = -1;
-        cfgIndexL.MotorOutput.DutyCycleNeutralDeadband = 0;
-        cfgIndexL.Voltage.PeakForwardVoltage = 12;
-        cfgIndexL.Voltage.PeakReverseVoltage = -12;
+        cfgFeed.MotorOutput.NeutralMode = kMode;
+        cfgFeed.CurrentLimits.SupplyCurrentLimit = 80;
+        cfgFeed.CurrentLimits.SupplyCurrentLimitEnable = false;
+        cfgFeed.Feedback.SensorToMechanismRatio = 1.0;
+        cfgFeed.MotorOutput.PeakForwardDutyCycle = 1;
+        cfgFeed.MotorOutput.PeakReverseDutyCycle = -1;
+        cfgFeed.MotorOutput.DutyCycleNeutralDeadband = 0;
+        cfgFeed.Voltage.PeakForwardVoltage = 12;
+        cfgFeed.Voltage.PeakReverseVoltage = -12;
 
-        cfgIndexR.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
-        cfgIndexR.OpenLoopRamps.DutyCycleOpenLoopRampPeriod = 0;
+        cfgFeed.Slot0.kP = 0.11;
+        cfgFeed.Slot0.kI = 0.0;
+        cfgFeed.Slot0.kD = 0.0;
 
-        cfgIndexR.MotorOutput.NeutralMode = kMode;
-        cfgIndexR.CurrentLimits.SupplyCurrentLimit = 80;
-        cfgIndexR.CurrentLimits.SupplyCurrentLimitEnable = false;
-        cfgIndexR.Feedback.SensorToMechanismRatio = 1.0;
-        cfgIndexR.MotorOutput.PeakForwardDutyCycle = 1;
-        cfgIndexR.MotorOutput.PeakReverseDutyCycle = -1;
-        cfgIndexR.MotorOutput.DutyCycleNeutralDeadband = 0;
-        cfgIndexR.Voltage.PeakForwardVoltage = 12;
-        cfgIndexR.Voltage.PeakReverseVoltage = -12;
+        cfgIndex.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
+        cfgIndex.OpenLoopRamps.DutyCycleOpenLoopRampPeriod = 0;
 
-        mIndexL.getConfigurator().apply(cfgIndexL);
-        mIndexR.getConfigurator().apply(cfgIndexR);
+        cfgIndex.MotorOutput.NeutralMode = kMode;
+        cfgIndex.CurrentLimits.SupplyCurrentLimit = 80;
+        cfgIndex.CurrentLimits.SupplyCurrentLimitEnable = false;
+        cfgIndex.Feedback.SensorToMechanismRatio = 1.0;
+        cfgIndex.MotorOutput.PeakForwardDutyCycle = 1;
+        cfgIndex.MotorOutput.PeakReverseDutyCycle = -1;
+        cfgIndex.MotorOutput.DutyCycleNeutralDeadband = 0;
+        cfgIndex.Voltage.PeakForwardVoltage = 12;
+        cfgIndex.Voltage.PeakReverseVoltage = -12;
+
+        cfgIndex.Slot0.kP = 0.11;
+        cfgIndex.Slot0.kI = 0.0;
+        cfgIndex.Slot0.kD = 0.0;
+
+        mFeed.getConfigurator().apply(cfgFeed);
+        mIndex.getConfigurator().apply(cfgIndex);
     }
     
     /**
@@ -603,8 +680,8 @@ public class Hood extends Command {
     */
     static public double[] getIndexPosition() {
         return new double[] {
-            mIndexL.getPosition().getValueAsDouble(),
-            mIndexR.getPosition().getValueAsDouble()};
+            mFeed.getPosition().getValueAsDouble(),
+            mIndex.getPosition().getValueAsDouble()};
     }
 
     /**
@@ -614,8 +691,8 @@ public class Hood extends Command {
     */
     static public double[] getIndexVelocity() {
         return new double[] {
-            mIndexL.getVelocity().getValueAsDouble(),
-            mIndexR.getVelocity().getValueAsDouble()};
+            mFeed.getVelocity().getValueAsDouble(),
+            mIndex.getVelocity().getValueAsDouble()};
     }
     /**
     * Define a velocidade dos motores do Indexer
@@ -623,8 +700,8 @@ public class Hood extends Command {
     * @param speed Define a velocidade Left e Right [Limites = 1 a -1].
     */
     static public void setIndex(double speed){
-        mIndexL.set(speed);
-        mIndexR.set(speed);
+        mFeed.set(speed);
+        mIndex.set(speed);
     }
 
     /**
@@ -634,19 +711,91 @@ public class Hood extends Command {
     */
     public void setIndexRPM(double setpointRPM){
         this.targetRPMIndex = setpointRPM / 60.0;
-        double kV = 0.115;
+        double kV = 0.15;
         double VoltageFeedFoward = this.targetRPMIndex * kV;
-        mShooterL.setControl(shooterControl.withVelocity(targetRPMIndex).withFeedForward(VoltageFeedFoward));
-        mShooterR.setControl(shooterControl.withVelocity(targetRPMIndex).withFeedForward(VoltageFeedFoward));
+        mIndex.setControl(shooterControl.withVelocity(targetRPMIndex).withFeedForward(VoltageFeedFoward));
     }
+
+    public void setFeedRPM(double setpointRPM){
+        this.targetRPMFeeder = setpointRPM / 60.0;
+        double kV = 0.15;
+        double VoltageFeedFoward = this.targetRPMFeeder * kV;
+        mFeed.setControl(shooterControl.withVelocity(targetRPMFeeder).withFeedForward(VoltageFeedFoward));
+    }
+
     /**
     * Para os motores do Indexer e configura o motor em modo coast.
     *
     * @param null
     */
     static public void stopIndexSpeed() {
-        configShooter(NeutralModeValue.Coast);
-        mIndexL.stopMotor();
-        mIndexR.stopMotor();
+        configIndex(NeutralModeValue.Coast);
+        mFeed.stopMotor();
+        mIndex.stopMotor();
+    }
+
+    
+    /**
+    * Configura a posição da articulação do intake.
+    * @motor @param type 1 x NEO
+    * @param kP Ganho proporcional do sistema.
+    * @param OutMin Valor de velocidade minima do motor [LIMITE = -1].
+    * @param OutMax Valor de velocidade maxima do motor [LIMITE = 1].
+    */
+    static void configBelt(double kP, double OutMin, double OutMax){
+        TalonFXConfiguration cfgBelt = new TalonFXConfiguration();
+
+        cfgBelt.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
+        cfgBelt.OpenLoopRamps.DutyCycleOpenLoopRampPeriod = 0;
+
+        cfgBelt.MotorOutput.NeutralMode = NeutralModeValue.Coast;
+        cfgBelt.CurrentLimits.SupplyCurrentLimit = 80;
+        cfgBelt.CurrentLimits.SupplyCurrentLimitEnable = false;
+        cfgBelt.Feedback.SensorToMechanismRatio = 1.0;
+        cfgBelt.MotorOutput.PeakForwardDutyCycle = 1;
+        cfgBelt.MotorOutput.PeakReverseDutyCycle = -1;
+        cfgBelt.MotorOutput.DutyCycleNeutralDeadband = 0;
+        cfgBelt.Voltage.PeakForwardVoltage = 12;
+        cfgBelt.Voltage.PeakReverseVoltage = -12;
+
+        mBelt.getConfigurator().apply(cfgBelt);
+    }
+
+    /**
+    * @return a posição do Belt
+    */
+    static public double getBeltPosition(){
+        return mBelt.getPosition().getValueAsDouble();
+    }
+
+    /**
+    * @return a velocidade de Belt.
+    */
+    static public double getBeltVelocity(){
+        return mBelt.getVelocity().getValueAsDouble();
+    }
+
+    /**
+    * @return a velocidade de Belt.
+    * @param speed Velocidade do Belt [LIMITE = 1 a -1]
+    */
+    static public void setBeltSpeed(double speed){
+        mBelt.set(speed);
+    }
+
+    public void setBeltRPM(double setpointRPM){
+        setpointRPM = MathUtil.clamp(setpointRPM, 0, 6000);
+
+        this.targetRPMBelt = setpointRPM / 60.0;
+        double kV = 0.115;
+        double VoltageFeedFoward = this.targetRPMBelt * kV;
+        mBelt.setControl(beltControl.withVelocity(targetRPMBelt).withFeedForward(VoltageFeedFoward));
+    }
+
+    /**
+    * Desliga o Belt
+    */
+    static public void stopBelt(){
+        mBelt.stopMotor();
     }
 }

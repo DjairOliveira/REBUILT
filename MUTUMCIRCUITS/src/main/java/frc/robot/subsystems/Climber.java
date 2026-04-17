@@ -10,6 +10,7 @@ import com.ctre.phoenix6.signals.NeutralModeValue;
 
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj2.command.Command;
+import frc.robot.generated.TunerConstants;
 
 
 public class Climber  extends Command {
@@ -17,10 +18,10 @@ public class Climber  extends Command {
     public static TalonFXS mclimber = new TalonFXS(17);
     public static PositionDutyCycle PID = new PositionDutyCycle(0);
 
-    private final CommandSwerveDrivetrain swerve;
+    // private CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
 
-    public Climber(CommandSwerveDrivetrain swerve){
-        this.swerve = swerve;
+    public Climber(){
+        configClimber(0.1, -1, 1, NeutralModeValue.Brake);
     }
 
     /**
@@ -37,7 +38,7 @@ public class Climber  extends Command {
         
         config.Commutation.MotorArrangement = MotorArrangementValue.Minion_JST;
 
-        config.MotorOutput.Inverted = InvertedValue.CounterClockwise_Positive;
+        config.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
 
         config.MotorOutput.NeutralMode = kMode;
         config.CurrentLimits.SupplyCurrentLimit = 80;
@@ -61,6 +62,10 @@ public class Climber  extends Command {
         return mclimber.getPosition().getValueAsDouble();
     }
 
+    public void setZeroClimber(){
+        mclimber.setPosition(0);
+    }
+
     /**
     * Define a posição do Climber.
     *
@@ -71,15 +76,17 @@ public class Climber  extends Command {
         double blueX = 4.298; // Aliança
         double redX = 12.41; // Aliança
 
-        Pose2d robotPose = swerve.getPose();
+        // Pose2d robotPose = swerve.getPose();
 
-        if((robotPose.getX() >= blueX-0.2 && robotPose.getX() <= (blueX-0.2)+1.2)
-            || (robotPose.getX() >= (redX+0.2) - 1.2 && robotPose.getX() <= redX+0.2)){
-            if(position < 20) mclimber.setControl(PID.withPosition(position));
-        }
-        else{
-            if(position >= 20) mclimber.setControl(PID.withPosition(position));
-        }
+        // if((robotPose.getX() >= blueX-0.2 && robotPose.getX() <= (blueX-0.2)+1.2)
+        //     || (robotPose.getX() >= (redX+0.2) - 1.2 && robotPose.getX() <= redX+0.2)){
+        //     if(position < 20) mclimber.setControl(PID.withPosition(position));
+        // }
+        // else{
+        //     if(position >= 20) mclimber.setControl(PID.withPosition(position));
+        // }
+
+        mclimber.setControl(PID.withPosition(position));
     }
 
     /**
