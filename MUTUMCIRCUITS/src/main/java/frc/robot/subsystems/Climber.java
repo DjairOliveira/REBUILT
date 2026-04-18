@@ -8,10 +8,9 @@ import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.MotorArrangementValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
 
+import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.wpilibj2.command.Command;
-import frc.robot.generated.TunerConstants;
-
 
 public class Climber  extends Command {
 
@@ -72,21 +71,19 @@ public class Climber  extends Command {
     * @param position Posição desejada do Climber.
     * @param speed Velocidade maximo e minima do sistema [LIMITES 1 a -1].
     */
-    public void setPosition(double position, double speed) {
-        double blueX = 4.298; // Aliança
-        double redX = 12.41; // Aliança
+    public void setPosition(Pose2d currentPose, double position, double speed) {
+        double blueX = 4.298;   // Aliança
+        double redX = 12.41;    // Aliança
 
-        // Pose2d robotPose = swerve.getPose();
+        position = MathUtil.clamp(position, 0, 110);
+        Pose2d robotPose = currentPose;
 
-        // if((robotPose.getX() >= blueX-0.2 && robotPose.getX() <= (blueX-0.2)+1.2)
-        //     || (robotPose.getX() >= (redX+0.2) - 1.2 && robotPose.getX() <= redX+0.2)){
-        //     if(position < 20) mclimber.setControl(PID.withPosition(position));
-        // }
-        // else{
-        //     if(position >= 20) mclimber.setControl(PID.withPosition(position));
-        // }
-
-        mclimber.setControl(PID.withPosition(position));
+        if((robotPose.getX() >= blueX-0.2 && robotPose.getX() <= (blueX-0.2)+1.2)
+            || (robotPose.getX() >= (redX+0.2) - 1.2 && robotPose.getX() <= redX+0.2)){
+        }
+        else{
+            mclimber.setControl(PID.withPosition(position));
+        }
     }
 
     /**

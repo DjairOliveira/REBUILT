@@ -1,21 +1,11 @@
 package frc.robot.subsystems;
 
-import com.revrobotics.spark.SparkMax;
-
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.controls.PositionDutyCycle;
 import com.ctre.phoenix6.controls.VelocityVoltage;
 import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
-import com.revrobotics.PersistMode;
-import com.revrobotics.ResetMode;
-import com.revrobotics.spark.FeedbackSensor;
-import com.revrobotics.spark.SparkClosedLoopController;
-import com.revrobotics.spark.SparkLowLevel.MotorType;
-import com.revrobotics.spark.config.SparkBaseConfig.IdleMode;
-
-import com.revrobotics.spark.config.SparkMaxConfig;
 
 import edu.wpi.first.math.MathUtil;
 
@@ -100,6 +90,7 @@ public class Intake {
     * @param speed Valor da velocidade do coletor [LIMITE = 1 a -1]
     */
     public void setIntakeSpeed(double speed){
+        speed = MathUtil.clamp(speed, -1, 1);
         mIntakeL.set(speed);
         mIntakeR.set(speed);
     }
@@ -148,6 +139,8 @@ public class Intake {
 
         cfg.MotorOutput.PeakForwardDutyCycle = OutMax;
         cfg.MotorOutput.PeakReverseDutyCycle = OutMin;
+        cfg.MotionMagic.MotionMagicAcceleration = 500; // RPS/s
+        cfg.MotionMagic.MotionMagicCruiseVelocity = 500; // RPS
 
         cfg.Slot0.kP = KP;
         cfg.Slot0.kI = 0.0;
@@ -185,6 +178,9 @@ public class Intake {
     * @param speed Valor de velocidade maxima e minima do motor [LIMITE = 1 a -1].
     */
     public static void setArticulated(double kP, double position, double speed) {
+        speed = MathUtil.clamp(speed, -1, 1);
+        position = MathUtil.clamp(position, 0, 22.394);
+
         configArticulated(kP, -speed, speed, NeutralModeValue.Brake);
         mArticulated.setControl(pidCtrArticulated.withPosition(position));
     }

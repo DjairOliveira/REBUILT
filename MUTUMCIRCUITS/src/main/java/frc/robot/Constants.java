@@ -34,7 +34,5 @@ public final class Constants {
   
   // Este fator será usado automaticamente no Drivetrain e no Piloto
   public static final double FATOR_ESCALA_PIGEON = GRAUS_REAIS / GRAUS_PIGEON;
-
-
   
 }

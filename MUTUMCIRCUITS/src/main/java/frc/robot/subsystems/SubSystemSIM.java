@@ -24,7 +24,7 @@ public class SubSystemSIM extends SubsystemBase {
     private double subClimberPositon = 0.0;
 
     private static double intakeAngleSim = 0.0;
-    private double climberPositionSim = 0.0;
+    private static double climberPositionSim = 0.0;
     private double intakeVelocitySim = 0.0;
     private double shooterVelocitySim = 0.0;
 
@@ -32,79 +32,93 @@ public class SubSystemSIM extends SubsystemBase {
     private PIDController climberPID = new PIDController(1.5, 0, 0.0);;
     private PIDController intakeVelocity = new PIDController(1.5, 0, 0.0);
     private PIDController shooterVelocity = new PIDController(10, 0, 0.0);
- 
+
     // private final CommandSwerveDrivetrain swerve; CommandSwerveDrivetrain swerve
-    
+
+    public final class Intake {
+        private final static double Real_Min = 0;
+        private final static double Real_Max = 22.394;
+        private final static double SIM_Min = 120;
+        private final static double SIM_Max = 0;
+
+        private final static double GavetaSIM_Min = 0.28;
+        private final static double GavetaSIM_Max = 0;
+    }
+
+    public final class Climber {
+        private final static double Real_Min = 0;
+        private final static double Real_Max = 110;
+        private final static double SIM_Min = -0.1;
+        private final static double SIM_Max = 0.2;
+    }
+
     public SubSystemSIM() {
         // this.swerve=swerve;
     }
 
-    public void configIntake(double kP){
+    public void configIntake(double kP) {
         intakePID.setP(kP);
     }
 
-    public void setIntakeVelocity(double speed){
+    public void setIntakeVelocity(double speed) {
         subIntakeVelocity = speed;
     }
 
-    public void setSubIntake(double angle, double kP, double min, double max) {
+    public void setSubArticula(double angle, double kP) {
         configIntake(kP);
-        subIntakeAngle = Hood.map(angle, min, max, 120, 0);
+        subIntakeAngle = Hood.map(angle, Intake.Real_Min, Intake.Real_Max, Intake.SIM_Min, Intake.SIM_Max);
     }
 
-    public static double getSubIntake(){
-            return Hood.map(intakeAngleSim, 120, 0, 0, 20);
+    public static double getSubArticula() {
+        return Hood.map(intakeAngleSim, Intake.SIM_Min, Intake.SIM_Max, Intake.Real_Min, Intake.Real_Max);
     }
 
-    public void configClimber(double kP){
+    public void configClimber(double kP) {
         climberPID.setP(kP);
     }
 
-    public double getIntakeVelocity(){
+    public double getIntakeVelocity() {
         return intakeVelocitySim;
     }
 
-    public void intakeVelocityCurrent(double speedAtual){
+    public void intakeVelocityCurrent(double speedAtual) {
         intakeVelocitySim = speedAtual;
     }
 
-    public double getShooterVelocity(){
+    public double getShooterVelocity() {
         return shooterVelocitySim;
     }
 
-    public static void setShooterVelocity(double speed){
+    public static void setShooterVelocity(double speed) {
         subShooterVelocity = speed;
     }
-    
-    public void shooterVelocityCurrent(double speedAtual){
+
+    public void shooterVelocityCurrent(double speedAtual) {
         shooterVelocitySim = speedAtual;
     }
 
-    public void setSubClimber(Pose2d robotPose, double position, double kP, double min, double max) {
+    public void setSubClimber(Pose2d robotPose, double position, double kP) {
         configClimber(kP);
 
         double blueX = 4.298; // Aliança
         double redX = 12.41; // Aliança
 
-        // Pose2d robotPose = swerve.getPose();
-
-        if((robotPose.getX() >= blueX-0.2 && robotPose.getX() <= (blueX-0.2)+1.2) || (robotPose.getX() >= (redX+0.2) - 1.2 && robotPose.getX() <= redX+0.2)){
-            if(!isArmazemFull){
-                if(position < 20)subClimberPositon = Hood.map(position, min, max, -0.1, 0.2);
+        if ((robotPose.getX() >= blueX - 0.2 && robotPose.getX() <= (blueX - 0.2) + 1.2)
+            || (robotPose.getX() >= (redX + 0.2) - 1.2 && robotPose.getX() <= redX + 0.2)) {
+            if (!isArmazemFull && position < 20) {
+                subClimberPositon = Hood.map(position, Climber.Real_Min, Climber.Real_Max, Climber.SIM_Min, Climber.SIM_Max);
             }
         }
-        else{
-            if(!isArmazemFull){
-                subClimberPositon = Hood.map(position, min, max, -0.1, 0.2);
-            }
-            else{
-                if(position >= 30) subClimberPositon = Hood.map(position, min, max, -0.1, 0.2);
+        else {
+            if (!isArmazemFull) subClimberPositon = Hood.map(position, Climber.Real_Min, Climber.Real_Max, Climber.SIM_Min, Climber.SIM_Max);
+            else {
+                if (position >= 30) subClimberPositon = Hood.map(position, Climber.Real_Min, Climber.Real_Max, Climber.SIM_Min, Climber.SIM_Max);
             }
         }
     }
 
-    public double getSubClimber(){
-        return Hood.map(climberPositionSim, -0.1, 0.2, 0, 100);
+    public static double getSubClimber() {
+        return Hood.map(climberPositionSim, Climber.SIM_Min, Climber.SIM_Max, Climber.Real_Min, Climber.Real_Max);
     }
 
     @Override
@@ -112,9 +126,9 @@ public class SubSystemSIM extends SubsystemBase {
 
         double intakeOutput = intakePID.calculate(intakeAngleSim, subIntakeAngle);
         intakeAngleSim += intakeOutput * 0.02;
-        intakeAngleSim = MathUtil.clamp(intakeAngleSim, 0, 120);
+        intakeAngleSim = MathUtil.clamp(intakeAngleSim, Intake.SIM_Max, Intake.SIM_Min);
 
-        subGavetaPositon = Hood.map(intakeAngleSim, 0, 120, 0.28, 0);
+        subGavetaPositon = Hood.map(intakeAngleSim, Intake.SIM_Max, Intake.SIM_Min, Intake.GavetaSIM_Min, Intake.GavetaSIM_Max);
 
         double climberOutput = climberPID.calculate(climberPositionSim, subClimberPositon);
         climberPositionSim += climberOutput * 0.02;
@@ -125,11 +139,11 @@ public class SubSystemSIM extends SubsystemBase {
         double shooterVelocityOutput = shooterVelocity.calculate(shooterVelocitySim, subShooterVelocity);
         shooterVelocitySim += shooterVelocityOutput * 0.02;
 
-        if (getIntakeVelocity() >= 1 && getIntakeVelocity() <= 3.5 && getSubIntake() < 3){
+        if (getIntakeVelocity() >= 1 && getIntakeVelocity() <= 3.5 && getSubArticula() < 3) {
             timerIntake = Timer.getFPGATimestamp();
         }
 
-        if (getShooterVelocity() >= 3.1 && getShooterVelocity() <= 3.4){
+        if (getShooterVelocity() >= 3.1 && getShooterVelocity() <= 3.4) {
             timerShooter = Timer.getFPGATimestamp();
         }
 
@@ -144,16 +158,16 @@ public class SubSystemSIM extends SubsystemBase {
         Logger.recordOutput("SubSystemSim/Position/Articula", intakeAngleSim);
         Logger.recordOutput("SubSystemSim/Position/Climber", climberPositionSim);
 
-        Logger.recordOutput("SubSystemSim/Hood3D", new Pose3d[] {new Pose3d(
-            0.345, 0, 0.43, new Rotation3d(0.0, Math.toRadians(Hood.getAngleHoodSim()), Math.PI))});
-        
-        Logger.recordOutput("SubSystemSim/Intake3D", new Pose3d[] {new Pose3d(
-            -0.24, 0, 0.178, new Rotation3d(0.0, Math.toRadians(intakeAngleSim), 0))});
+        Logger.recordOutput("SubSystemSim/Hood3D", new Pose3d[] { new Pose3d(
+                0.345, 0, 0.43, new Rotation3d(0.0, Math.toRadians(Hood.getAngleHoodSim()), Math.PI)) });
 
-        Logger.recordOutput("SubSystemSim/Gaveta3D", new Pose3d[] {new Pose3d(
-            0.0552 - subGavetaPositon, 0, 0.179, new Rotation3d(0.0, 0, 0))});
+        Logger.recordOutput("SubSystemSim/Intake3D", new Pose3d[] { new Pose3d(
+                -0.24, 0, 0.178, new Rotation3d(0.0, Math.toRadians(intakeAngleSim), 0)) });
 
-        Logger.recordOutput("SubSystemSim/Climber3D", new Pose3d[] {new Pose3d(
-           0.356, 0, climberPositionSim, new Rotation3d(0.0, 0, 0))});
+        Logger.recordOutput("SubSystemSim/Gaveta3D", new Pose3d[] { new Pose3d(
+                0.0552 - subGavetaPositon, 0, 0.179, new Rotation3d(0.0, 0, 0)) });
+
+        Logger.recordOutput("SubSystemSim/Climber3D", new Pose3d[] { new Pose3d(
+                0.356, 0, climberPositionSim, new Rotation3d(0.0, 0, 0)) });
     }
 }

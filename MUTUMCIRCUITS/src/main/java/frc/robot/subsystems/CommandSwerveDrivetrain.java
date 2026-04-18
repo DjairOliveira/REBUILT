@@ -1,13 +1,10 @@
 package frc.robot.subsystems;
 
-import static edu.wpi.first.units.Units.*;
-
 import java.util.Optional;
 import java.util.function.Supplier;
 
 import org.littletonrobotics.junction.Logger;
 
-import com.ctre.phoenix6.SignalLogger;
 import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.swerve.SwerveDrivetrainConstants;
 import com.ctre.phoenix6.swerve.SwerveModuleConstants;
@@ -29,7 +26,6 @@ import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Subsystem;
-import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
 
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.config.RobotConfig;
@@ -42,7 +38,6 @@ import frc.robot.generated.TunerConstants.TunerSwerveDrivetrain;
 
 public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Subsystem {
 
-    // public SubSystemSIM m_SubSystemSIM = new SubSystemSIM();
     private XboxController m_Control = new XboxController(0);
 
     String frontCAM = "limelight-front";
@@ -56,7 +51,9 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     private final PIDController headingPid = new PIDController(1.0, 0.0, 0.0);
 
     private Rotation2d lockedHeading = new Rotation2d();
-    private boolean isHeadingLocked = false;
+    public boolean isHeadingLocked = false;
+
+    private double fixedAngle = 0;
 
     private double colisionProtect = 1;
     private static double OmegaCmd = 0;
@@ -72,13 +69,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     
     private boolean m_hasAppliedOperatorPerspective = false;
 
-    private final SwerveRequest.SysIdSwerveTranslation m_translationCharacterization = new SwerveRequest.SysIdSwerveTranslation();
-
-    private final SysIdRoutine m_sysIdRoutineTranslation = new SysIdRoutine(
-        new SysIdRoutine.Config(null, Volts.of(4), null, state -> SignalLogger.writeString("SysIdTranslation_State", state.toString())),
-        new SysIdRoutine.Mechanism(output -> setControl(m_translationCharacterization.withVolts(output)), null, this));
-
-    private SysIdRoutine m_sysIdRoutineToApply = m_sysIdRoutineTranslation;
+    private final SwerveRequest.SwerveDriveBrake brakeX = new SwerveRequest.SwerveDriveBrake();
 
     public CommandSwerveDrivetrain(SwerveDrivetrainConstants drivetrainConstants, SwerveModuleConstants<?, ?, ?>... modules) {
         super(drivetrainConstants, modules);
@@ -97,8 +88,10 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     }
 
     public Command applyRequest(Supplier<SwerveRequest> request) { return run(() -> this.setControl(request.get())); }
-    public Command sysIdQuasistatic(SysIdRoutine.Direction direction) { return m_sysIdRoutineToApply.quasistatic(direction); }
-    public Command sysIdDynamic(SysIdRoutine.Direction direction) { return m_sysIdRoutineToApply.dynamic(direction); }
+
+    public Command brakeX() {
+        return applyRequest(() -> brakeX);
+    }
 
     @Override
     public void periodic() {
@@ -126,6 +119,39 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         var left = LimelightHelpers.getBotPoseEstimate_wpiBlue(leftCAM);
         var right = LimelightHelpers.getBotPoseEstimate_wpiBlue(rightCAM);
 
+        // if (isValid(front)) {
+        //     if (megaTagUpdateOdometry(mt2Front, 4, 720)) {
+        //         double xyStdDev;
+        //         if (mt2Front.tagCount >= 2) xyStdDev = 0.1; 
+        //         else xyStdDev = 0.1 + (mt2Front.avgTagDist * 0.2); 
+        //         this.addVisionMeasurement(mt2Front.pose, mt2Front.timestampSeconds,
+        //             edu.wpi.first.math.VecBuilder.fill(xyStdDev, xyStdDev, 9999999.0)
+        //         );
+        //     }
+        // }
+
+        // if (isValid(left)) {
+        //     if (megaTagUpdateOdometry(mt2Left, 3.5, 720)) {
+        //         double xyStdDev;
+        //         if (mt2Left.tagCount >= 2) xyStdDev = 0.1; 
+        //         else xyStdDev = 0.1 + (mt2Left.avgTagDist * 0.2); 
+        //         this.addVisionMeasurement(mt2Left.pose, mt2Left.timestampSeconds,
+        //             edu.wpi.first.math.VecBuilder.fill(xyStdDev, xyStdDev, 9999999.0)
+        //         );
+        //     }
+        // }
+
+        // if (isValid(right)) {
+        //     if (megaTagUpdateOdometry(mt2Right, 3.5, 720)) {
+        //         double xyStdDev;
+        //         if (mt2Right.tagCount >= 2) xyStdDev = 0.1; 
+        //         else xyStdDev = 0.1 + (mt2Right.avgTagDist * 0.2); 
+        //         this.addVisionMeasurement(mt2Right.pose, mt2Right.timestampSeconds,
+        //             edu.wpi.first.math.VecBuilder.fill(xyStdDev, xyStdDev, 9999999.0)
+        //         );
+        //     }
+        // }
+
         if (isValid(front)) {
             megaTagUpdateOdometry(mt2Front, 4, 30);
             addVisionMeasurement(front.pose, front.timestampSeconds, edu.wpi.first.math.VecBuilder.fill(0.1, 0.1, 999999.0));
@@ -141,45 +167,46 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             addVisionMeasurement(right.pose, right.timestampSeconds, edu.wpi.first.math.VecBuilder.fill(0.1, 0.1, 999999.0));
         }
 
+
         Pose2d currentPose = this.getState().Pose;
         Rotation2d heading = currentPose.getRotation();
         ChassisSpeeds fieldSpeeds = ChassisSpeeds.fromRobotRelativeSpeeds(getState().Speeds, heading);
 
         double speedX = fieldSpeeds.vxMetersPerSecond;
-        double speedY = fieldSpeeds.vyMetersPerSecond;
+        // double speedY = fieldSpeeds.vyMetersPerSecond;
 
-        // if(m_SubSystemSIM.getSubClimber() >= 30){
-        //     if(currentPose.getX() >= 4.628 - 1 && currentPose.getX() <= 4.628 + 1){
-        //         if((currentPose.getY() >= 0 && currentPose.getY() <= 1.4)){
-        //             if((currentPose.getX() - 4.628) < 0 && speedX > 0.5 || (currentPose.getX() - 4.628) > 0 && speedX < -0.5) colisionProtect = 0.25; 
-        //             if((currentPose.getX() - 4.628) < 0 && speedX < -0.5 || (currentPose.getX() - 4.628) > 0 && speedX > 0.5) colisionProtect = 1;
-        //         }
-        //         else if((currentPose.getY() >= 6.393 && currentPose.getY() <= 8.2)){
-        //             if((currentPose.getX() - 4.628) < 0 && speedX > 0.5 || (currentPose.getX() - 4.628) > 0 && speedX < -0.5) colisionProtect = 0.25; 
-        //             if((currentPose.getX() - 4.628) < 0 && speedX < -0.5 || (currentPose.getX() - 4.628) > 0 && speedX > 0.5) colisionProtect = 1;
-        //         }
-        //         else{
-        //             colisionProtect = 1;
-        //         }
-        //     }
-        //     else if(currentPose.getX() >= 11.927 - 1 && currentPose.getX() <= 11.927 + 1){
-        //         if((currentPose.getY() >= 0 && currentPose.getY() <= 1.4)){
-        //             if((currentPose.getX() - 11.927) < 0 && speedX > 0.5 || (currentPose.getX() - 11.927) > 0 && speedX < -0.5) colisionProtect = 0.25; 
-        //             if((currentPose.getX() - 11.927) < 0 && speedX < -0.5 || (currentPose.getX() - 11.927) > 0 && speedX > 0.5) colisionProtect = 1;
-        //         }
-        //         else if((currentPose.getY() >= 6.393 && currentPose.getY() <= 8.2)){
-        //             if((currentPose.getX() - 11.927) < 0 && speedX > 0.5 || (currentPose.getX() - 11.927) > 0 && speedX < -0.5) colisionProtect = 0.25; 
-        //             if((currentPose.getX() - 11.927) < 0 && speedX < -0.5 || (currentPose.getX() - 11.927) > 0 && speedX > 0.5) colisionProtect = 1;
-        //         }
-        //         else{
-        //             colisionProtect = 1;
-        //         }
-        //     }
-        //     else colisionProtect = 1;
-        // }
-        // else{
-        //     colisionProtect = 1;
-        // }
+        if(Climber.getPosition() >= 1){
+            if(currentPose.getX() >= 4.628 - 1 && currentPose.getX() <= 4.628 + 1){
+                if((currentPose.getY() >= 0 && currentPose.getY() <= 1.4)){
+                    if((currentPose.getX() - 4.628) < 0 && speedX > 0.5 || (currentPose.getX() - 4.628) > 0 && speedX < -0.5) colisionProtect = 0.25; 
+                    if((currentPose.getX() - 4.628) < 0 && speedX < -0.5 || (currentPose.getX() - 4.628) > 0 && speedX > 0.5) colisionProtect = 1;
+                }
+                else if((currentPose.getY() >= 6.393 && currentPose.getY() <= 8.2)){
+                    if((currentPose.getX() - 4.628) < 0 && speedX > 0.5 || (currentPose.getX() - 4.628) > 0 && speedX < -0.5) colisionProtect = 0.25; 
+                    if((currentPose.getX() - 4.628) < 0 && speedX < -0.5 || (currentPose.getX() - 4.628) > 0 && speedX > 0.5) colisionProtect = 1;
+                }
+                else{
+                    colisionProtect = 1;
+                }
+            }
+            else if(currentPose.getX() >= 11.927 - 1 && currentPose.getX() <= 11.927 + 1){
+                if((currentPose.getY() >= 0 && currentPose.getY() <= 1.4)){
+                    if((currentPose.getX() - 11.927) < 0 && speedX > 0.5 || (currentPose.getX() - 11.927) > 0 && speedX < -0.5) colisionProtect = 0.25; 
+                    if((currentPose.getX() - 11.927) < 0 && speedX < -0.5 || (currentPose.getX() - 11.927) > 0 && speedX > 0.5) colisionProtect = 1;
+                }
+                else if((currentPose.getY() >= 6.393 && currentPose.getY() <= 8.2)){
+                    if((currentPose.getX() - 11.927) < 0 && speedX > 0.5 || (currentPose.getX() - 11.927) > 0 && speedX < -0.5) colisionProtect = 0.25; 
+                    if((currentPose.getX() - 11.927) < 0 && speedX < -0.5 || (currentPose.getX() - 11.927) > 0 && speedX > 0.5) colisionProtect = 1;
+                }
+                else{
+                    colisionProtect = 1;
+                }
+            }
+            else colisionProtect = 1;
+        }
+        else{
+            colisionProtect = 1;
+        }
 
         double anguloAcumuladoBruto = getPigeon2().getYaw().getValueAsDouble();
         double anguloRealModulado = MathUtil.inputModulus(anguloAcumuladoBruto * Constants.FATOR_ESCALA_PIGEON, -180, 180);
@@ -202,29 +229,31 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             OmegaCmd = MathUtil.clamp(OmegaCmd, -3, 3);
 
             isHeadingLocked=false;
+            fixedAngle = anguloRealModulado;
 
             /*  analizar a possibilidade de mudar isso juntando os dois */
         }
         else if(Math.abs(m_Control.getRightX()) < 0.1){
-            if(m_Control.getLeftBumperButton()){  ///// talvez tenha que deixar independente
+            if(m_Control.getRightBumperButton()){       ///// talvez tenha que deixar independente
                 OmegaCmd = Hood.getOmega();
                 isHeadingLocked = false;
+                fixedAngle = anguloRealModulado;
             }
             else{
-                if (!isHeadingLocked) {
-                    lockedHeading = Rotation2d.fromDegrees(anguloRealModulado);
-                    headingPid.reset(); 
-                    isHeadingLocked = true;
-                }
-                double calcTrava = headingPid.calculate(
-                    Math.toRadians(anguloRealModulado),
-                    lockedHeading.getRadians());
-                    
-                OmegaCmd = headingPid.atSetpoint() ? 0.0 : calcTrava;
-                OmegaCmd = MathUtil.clamp(OmegaCmd, -Constants.LIMITE_ROTACAO, Constants.LIMITE_ROTACAO);
+                Pose2d robot_getValues = getPose();
+                Rotation2d Robot_Yaw = robot_getValues.getRotation();
+
+                Rotation2d targetAngle = Rotation2d.fromDegrees(fixedAngle);
+                double error = MathUtil.angleModulus(targetAngle.minus(Robot_Yaw).getRadians());
+
+                double kP = 1.15;
+                OmegaCmd = kP * error;
+                
+                OmegaCmd = MathUtil.clamp(OmegaCmd, -3, 3);
             }
         }
         else{
+            fixedAngle = anguloRealModulado;
             OmegaCmd = -m_Control.getRightX();
             isHeadingLocked = false;
         }
@@ -243,18 +272,13 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         Logger.recordOutput("VISION/mt2Left", mt2Left != null ? mt2Left.pose.getX() : 0.0);
         Logger.recordOutput("VISION/mt2Right", mt2Right != null ? mt2Right.pose.getX() : 0.0);
         
-        /* VISÃO MUTUM
-        // boolean isRed = DriverStation.getAlliance().orElse(Alliance.Blue) == Alliance.Red;
-        // double alvoX = isRed ? Constants.HUB_X_Red : Constants.HUB_X_Blue;
-        // double alvoY = isRed ? Constants.HUB_Y_Red : Constants.HUB_Y_Blue;
+        // /* VISÃO MUTUM */
 
-        // double distanciaHubMetros = Math.hypot(alvoX - poseAtual.getX(), alvoY - poseAtual.getY());
-        // SmartDashboard.putNumber("Distancia HUB (m)", distanciaHubMetros);
 
-        // 4. Envia o ÂNGULO VERDADEIRO para Limelight (MegaTag 2). Ela precisa saber qual o ângulo do robô para definir de onde
-        // o robô está olhando para a TAG quando a limelight ver uma TAG.
+        // // 4. Envia o ÂNGULO VERDADEIRO para Limelight (MegaTag 2). Ela precisa saber qual o ângulo do robô para definir de onde
+        // // o robô está olhando para a TAG quando a limelight ver uma TAG.
         
-        // LimelightHelpers.SetRobotOrientation("limelight", anguloCorrigidoLL, 0, 0, 0, 0, 0);
+        // // LimelightHelpers.SetRobotOrientation("limelight", anguloCorrigidoLL, 0, 0, 0, 0, 0);
 
         // // 5. Obtém as informações completas que a limelight está coletando: coordenada X, Y, quantas tags está vendo, etc.
         // // Ela só obterá as informações corretamente se você enviar o ângulo correto anteriormente no SetRobotOrientation 
@@ -292,7 +316,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         //         //999999 pois o piegon é o responsavel pelo ângulo.
         //     );
         // }
-         */
+        //  /**/
     }
 
     public boolean isValid(LimelightHelpers.PoseEstimate est) {
@@ -301,16 +325,16 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         && est.avgTagDist < 4.0;   // distância máxima
     }
 
-    public boolean megaTagUpdateOdometry(LimelightHelpers.PoseEstimate mt2, double maxDistanceTAG, double maxRotation){
+    public boolean megaTagUpdateOdometry(LimelightHelpers.PoseEstimate mt2, double maxDistanceTAG, double maxRotation) {
         double omega = Math.abs(this.getPigeon2().getAngularVelocityZDevice().getValueAsDouble());
         return mt2 != null && mt2.tagCount > 0 && mt2.avgTagDist < maxDistanceTAG && omega < maxRotation ? true : false;
     }
 
-    public void updateLimelightAngle(String limelightName, double newAngle){
+    public void updateLimelightAngle(String limelightName, double newAngle) {
         LimelightHelpers.SetRobotOrientation(limelightName, newAngle, 0, 0, 0, 0, 0);
     }
 
-    public void zeroGyro() {
+    public void zeroGyroPigeon() {
         this.getPigeon2().setYaw(0);
     }
 
