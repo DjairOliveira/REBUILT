@@ -158,9 +158,12 @@ public class RobotContainer {
             Commands.runOnce(() -> mIntake.setIntakeRPM(0))
         ));
         
-        activateCommandOnCondition(()-> Climber.getPosition() < 10, 
+        activateCommandOnCondition(()-> Climber.getPosition() < 10 && driver.getBButton(), 
         Commands.runOnce(() -> Intake.setArticulated(0.1, 0, 0.5)));
 
+        activateCommandOnCondition(()-> Climber.getPosition() < 20 && driver.getRightBumperButton(), 
+        Commands.runOnce(() -> Intake.setArticulated(0.05, 0, 0.5)));
+        
         
         /*  SIMULATION */
         activateCommandOnCondition(() -> intakectn == 1, new SequentialCommandGroup(

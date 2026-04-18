@@ -14,6 +14,7 @@ import com.ctre.phoenix6.signals.NeutralModeValue;
 import com.google.flatbuffers.Constants;
 
 import edu.wpi.first.math.MathUtil;
+import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
@@ -67,11 +68,14 @@ public class Hood extends Command {
         public static double OmegaCmd = 0;
         public static double angleTurretSim = 0;
         public static double poseHood = 0, poseHoodSim = 0;
+        private boolean ctrSlewRate = false;
         
         public double tHigh = 5, tLow = 2, tArticula = 10;
         private boolean RPMShooterOK = false;
     
         private final SlewRateLimiter shooterLimiter = new SlewRateLimiter(50); // RPS/s
+
+        private final PIDController headindAin = new PIDController(1.0, 0.0, 0.0);
             
         private final class kPHeading{
             private final static double Carpete = 1.55;
@@ -162,8 +166,9 @@ public class Hood extends Command {
                     ctrAligned=false;
                 }
     
-                if (RPMShooterOK && errorTimer(timerShot) > 0.75) {
-                    RPMIndex = (RPMShooter / 2) - 500; //Colocar valor para Indexar
+                if (RPMShooterOK && errorTimer(timerShot) > 0.5) {
+                    RPMIndex = RPMShooter;
+                    // RPMIndex = (RPMShooter / 2) - 50; //Colocar valor para Indexar
                     RPMBelt = 6000;
                     indexando = true;
                 }
@@ -221,7 +226,7 @@ public class Hood extends Command {
     
         public void end() {
             setHoodPosition(0);
-            shooterLimiter.reset(0);
+            shooterLimiter.reset(20);
             setShooterRPM(1500);
             stopIndexSpeed();
             stopBelt();
@@ -231,6 +236,7 @@ public class Hood extends Command {
             articulaAux=false;
             ctrAligned=true;
             indexando = false;
+            ctrSlewRate = true;
         
             Logger.recordOutput("HOOD/Aligned", aligned);
         }
@@ -272,7 +278,7 @@ public class Hood extends Command {
     */
     private void setIndexer (double RPMIndex, double RPMbelt) {
         setIndexRPM(RPMIndex);
-        setFeedRPM(RPMIndex / 2);
+        setFeedRPM(RPMIndex * 0.666);
         setBeltRPM(RPMbelt);
     }
 
@@ -388,15 +394,17 @@ public class Hood extends Command {
         // Rotation2d targetAngleRobot = angleHub.getAngle();
 
         double error = MathUtil.angleModulus(targetAngleHood.minus(Robot_Yaw).getRadians());
-
         double kP = kPHeading.Carpete;
         OmegaCmd = kP * error;
 
         OmegaCmd = MathUtil.clamp(OmegaCmd, -3, 3);
 
+        // OmegaCmd = headindAin.calculate(MathUtil.angleModulus(targetAngleHood.minus(Robot_Yaw).getRadians()));
+
+        OmegaCmd = MathUtil.clamp(OmegaCmd, -3, 3);
         aligned = Math.abs(error) < Math.toRadians(6.5);
 
-        Logger.recordOutput("Aling/error", error);
+        // Logger.recordOutput("Aling/error", error);
         Logger.recordOutput("Aling/Heading", swerve.getHeading());
 
         Logger.recordOutput("ROBOT/Hood", new double[] {poseHood.getX(), poseHood.getY(), Robot_Yaw.getRadians()});
@@ -471,8 +479,8 @@ public class Hood extends Command {
         cfgShooterL.MotorOutput.DutyCycleNeutralDeadband = 0;
         cfgShooterL.Voltage.PeakForwardVoltage = 12;
         cfgShooterL.Voltage.PeakReverseVoltage = -12;
-        cfgShooterL.OpenLoopRamps.DutyCycleOpenLoopRampPeriod = 0.05;
-        cfgShooterL.ClosedLoopRamps.DutyCycleClosedLoopRampPeriod = 0.05;
+        cfgShooterL.OpenLoopRamps.DutyCycleOpenLoopRampPeriod = 0;
+        cfgShooterL.ClosedLoopRamps.DutyCycleClosedLoopRampPeriod = 0;
 
         cfgShooterL.Slot0.kP = kP;
         cfgShooterL.Slot0.kI = 0.0;
@@ -489,8 +497,8 @@ public class Hood extends Command {
         cfgShooterR.MotorOutput.DutyCycleNeutralDeadband = 0;
         cfgShooterR.Voltage.PeakForwardVoltage = 12;
         cfgShooterR.Voltage.PeakReverseVoltage = -12;
-        cfgShooterR.OpenLoopRamps.DutyCycleOpenLoopRampPeriod = 0.05;
-        cfgShooterR.ClosedLoopRamps.DutyCycleClosedLoopRampPeriod = 0.05;
+        cfgShooterR.OpenLoopRamps.DutyCycleOpenLoopRampPeriod = 0;
+        cfgShooterR.ClosedLoopRamps.DutyCycleClosedLoopRampPeriod = 0;
 
         cfgShooterR.Slot0.kP = kP;
         cfgShooterR.Slot0.kI = 0.0;
@@ -555,25 +563,26 @@ public class Hood extends Command {
     * @param maxRPMKraken 6000.
     */
     public void setShooterRPM(double setpointRPM){
-        // setpointRPM = MathUtil.clamp(setpointRPM, 0, 6000);
-        // this.targetRPMShooter = setpointRPM / 60.0;
-        // double kV = 0.118;
-        // double VoltageFeedFoward = this.targetRPMShooter * kV;
-        // mShooterL.setControl(shooterControl.withVelocity(targetRPMShooter).withFeedForward(VoltageFeedFoward));
-        // mShooterR.setControl(shooterControl.withVelocity(targetRPMShooter).withFeedForward(VoltageFeedFoward));
-    
         setpointRPM = MathUtil.clamp(setpointRPM, 0, 6000);
         this.targetRPMShooter = setpointRPM / 60.0;
-
-        if(!RPMShooterOK){
-          targetRPMShooter =  shooterLimiter.calculate(targetRPMShooter);
-        }
-        
         double kV = 0.118;
-        double VoltageFeedFoward = targetRPMShooter * kV;
-
+        double VoltageFeedFoward = this.targetRPMShooter * kV;
         mShooterL.setControl(shooterControl.withVelocity(targetRPMShooter).withFeedForward(VoltageFeedFoward));
         mShooterR.setControl(shooterControl.withVelocity(targetRPMShooter).withFeedForward(VoltageFeedFoward));
+    
+        // setpointRPM = MathUtil.clamp(setpointRPM, 0, 6000);
+        // this.targetRPMShooter = setpointRPM / 60.0;
+
+        // if(!RPMShooterOK && ctrSlewRate){
+        //   targetRPMShooter =  shooterLimiter.calculate(targetRPMShooter);
+        //   ctrSlewRate = false;
+        // }
+        
+        // double kV = 0.118;
+        // double VoltageFeedFoward = targetRPMShooter * kV;
+
+        // mShooterL.setControl(shooterControl.withVelocity(targetRPMShooter).withFeedForward(VoltageFeedFoward));
+        // mShooterR.setControl(shooterControl.withVelocity(targetRPMShooter).withFeedForward(VoltageFeedFoward));
     
     }
 
