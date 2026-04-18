@@ -105,7 +105,7 @@ public class RobotContainer {
         activateCommandOnCondition(() -> driver.getLeftBumperButton(), new InstantCommand(() -> intakectn++));
 
         activateCommandOnCondition(() -> intakectn == 1, new SequentialCommandGroup(
-            Commands.runOnce(() -> mIntake.setIntakeRPM(6000)),
+            Commands.runOnce(() -> mIntake.setIntakeRPM(6000)), //////
             Commands.runOnce(() -> Intake.setArticulated(0.1, 22.394, 0.5)),
             Commands.runOnce(() -> mClimber.setPosition(drivetrain.getPose(), 110, 1))));
 
@@ -122,6 +122,9 @@ public class RobotContainer {
         activateCommandOnCondition(()-> Intake.getArticulatedPosition() < 8 && climberMove == 1, new SequentialCommandGroup(
             Commands.runOnce(() -> mClimber.setPosition(drivetrain.getPose(), 0, 1)),
             Commands.runOnce(() -> climberMove = 0)));
+
+        // Cmdriver.back().onTrue(Commands.runOnce(() -> mHood.setIndexRPM(150)));
+
 
         /*PUNHETADA*/
         // activateCommandOnCondition(() -> mHood.getarticulaAux(), new SequentialCommandGroup(

@@ -15,6 +15,7 @@ import com.google.flatbuffers.Constants;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.math.controller.SimpleMotorFeedforward;
 import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
@@ -73,7 +74,7 @@ public class Hood extends Command {
         public double tHigh = 5, tLow = 2, tArticula = 10;
         private boolean RPMShooterOK = false;
     
-        private final SlewRateLimiter shooterLimiter = new SlewRateLimiter(50); // RPS/s
+        //private final SlewRateLimiter shooterLimiter = new SlewRateLimiter(50); // RPS/s
 
         private final PIDController headindAin = new PIDController(1.0, 0.0, 0.0);
             
@@ -213,6 +214,9 @@ public class Hood extends Command {
             Logger.recordOutput("HOOD/Position", getHoodPositon());
             Logger.recordOutput("HOOD/RPM/GetShotter1", getShooterVelocity()[0] * 60);
             Logger.recordOutput("HOOD/RPM/GetShooter2", getShooterVelocity()[1] * 60);
+            Logger.recordOutput("HOOD/RPM/GetShooter1Acceleration", getShooteracceleration()[0]);
+            Logger.recordOutput("HOOD/RPM/GetShooter2Acceleration", getShooteracceleration()[1]);
+            
             Logger.recordOutput("HOOD/RPM/GetFeeder", getIndexVelocity()[0] * 60);
             Logger.recordOutput("HOOD/RPM/GetIndex", getIndexVelocity()[1] * 60);
             Logger.recordOutput("HOOD/RPM/GetBelt", getBeltVelocity() * 60);
@@ -226,7 +230,6 @@ public class Hood extends Command {
     
         public void end() {
             setHoodPosition(0);
-            shooterLimiter.reset(20);
             setShooterRPM(1500);
             stopIndexSpeed();
             stopBelt();
@@ -530,6 +533,14 @@ public class Hood extends Command {
             mShooterR.getVelocity().getValueAsDouble()};
     }
 
+    static public double[] getShooteracceleration(){
+        return new double[] {
+            mShooterL.getAcceleration().getValueAsDouble(),
+            mShooterR.getAcceleration().getValueAsDouble()};
+    }
+
+
+
     public void setZeroShooter(){
         mShooterL.setPosition(0);
         mShooterR.setPosition(0);
@@ -565,8 +576,17 @@ public class Hood extends Command {
     public void setShooterRPM(double setpointRPM){
         setpointRPM = MathUtil.clamp(setpointRPM, 0, 6000);
         this.targetRPMShooter = setpointRPM / 60.0;
+
+        double kS = 0.0;
         double kV = 0.118;
-        double VoltageFeedFoward = this.targetRPMShooter * kV;
+        double kA = 0.05;
+
+        SimpleMotorFeedforward feedforward = new SimpleMotorFeedforward(kS, kV, kA);
+
+        double VoltageFeedFoward = feedforward.calculate(this.targetRPMShooter);
+
+        //double VoltageFeedFoward = this.targetRPMShooter * kV;
+
         mShooterL.setControl(shooterControl.withVelocity(targetRPMShooter).withFeedForward(VoltageFeedFoward));
         mShooterR.setControl(shooterControl.withVelocity(targetRPMShooter).withFeedForward(VoltageFeedFoward));
     

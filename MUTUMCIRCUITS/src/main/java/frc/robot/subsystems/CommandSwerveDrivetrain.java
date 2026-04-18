@@ -48,9 +48,6 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     public LimelightHelpers.PoseEstimate mt2Left = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(leftCAM);       /* TEMOS PERGUNTAS */ //SetRobotOrientation
     public LimelightHelpers.PoseEstimate mt2Right = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(rightCAM);     /* TEMOS PERGUNTAS */ //SetRobotOrientation 
 
-    private final PIDController headingPid = new PIDController(1.0, 0.0, 0.0);
-
-    private Rotation2d lockedHeading = new Rotation2d();
     public boolean isHeadingLocked = false;
 
     private double fixedAngle = 0;
@@ -152,20 +149,20 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         //     }
         // }
 
-        if (isValid(front)) {
-            megaTagUpdateOdometry(mt2Front, 4, 30);
-            addVisionMeasurement(front.pose, front.timestampSeconds, edu.wpi.first.math.VecBuilder.fill(0.1, 0.1, 999999.0));
-        }
+        // if (isValid(front)) {
+        //     megaTagUpdateOdometry(mt2Front, 4, 30);
+        //     addVisionMeasurement(front.pose, front.timestampSeconds, edu.wpi.first.math.VecBuilder.fill(0.1, 0.1, 999999.0));
+        // }
 
-        if (isValid(left)) {
-            megaTagUpdateOdometry(mt2Left, 4, 30);
-            addVisionMeasurement(left.pose, left.timestampSeconds, edu.wpi.first.math.VecBuilder.fill(0.1, 0.1, 999999.0));
-        }
+        // if (isValid(left)) {
+        //     megaTagUpdateOdometry(mt2Left, 4, 30);
+        //     addVisionMeasurement(left.pose, left.timestampSeconds, edu.wpi.first.math.VecBuilder.fill(0.1, 0.1, 999999.0));
+        // }
 
-        if (isValid(right)) {
-            megaTagUpdateOdometry(mt2Right, 4, 30);
-            addVisionMeasurement(right.pose, right.timestampSeconds, edu.wpi.first.math.VecBuilder.fill(0.1, 0.1, 999999.0));
-        }
+        // if (isValid(right)) {
+        //     megaTagUpdateOdometry(mt2Right, 4, 30);
+        //     addVisionMeasurement(right.pose, right.timestampSeconds, edu.wpi.first.math.VecBuilder.fill(0.1, 0.1, 999999.0));
+        // }
 
 
         Pose2d currentPose = this.getState().Pose;
@@ -228,7 +225,6 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
 
             OmegaCmd = MathUtil.clamp(OmegaCmd, -3, 3);
 
-            isHeadingLocked=false;
             fixedAngle = anguloRealModulado;
 
             /*  analizar a possibilidade de mudar isso juntando os dois */
@@ -236,7 +232,6 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         else if(Math.abs(m_Control.getRightX()) < 0.1){
             if(m_Control.getRightBumperButton()){       ///// talvez tenha que deixar independente
                 OmegaCmd = Hood.getOmega();
-                isHeadingLocked = false;
                 fixedAngle = anguloRealModulado;
             }
             else{
@@ -255,7 +250,6 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         else{
             fixedAngle = anguloRealModulado;
             OmegaCmd = -m_Control.getRightX();
-            isHeadingLocked = false;
         }
 
         double pigeonMentirosoTela = MathUtil.inputModulus(YawRaw, -180, 180);
@@ -273,8 +267,6 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         Logger.recordOutput("VISION/mt2Right", mt2Right != null ? mt2Right.pose.getX() : 0.0);
         
         // /* VISÃO MUTUM */
-
-
         // // 4. Envia o ÂNGULO VERDADEIRO para Limelight (MegaTag 2). Ela precisa saber qual o ângulo do robô para definir de onde
         // // o robô está olhando para a TAG quando a limelight ver uma TAG.
         
@@ -282,40 +274,40 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
 
         // // 5. Obtém as informações completas que a limelight está coletando: coordenada X, Y, quantas tags está vendo, etc.
         // // Ela só obterá as informações corretamente se você enviar o ângulo correto anteriormente no SetRobotOrientation 
-        // LimelightHelpers.PoseEstimate mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight");
+        LimelightHelpers.PoseEstimate mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-front");
 
         // // 6. Pega a velocidade de giro do robô (para não confiar na câmera se estivermos girando muito rápido).
-        // double velocidadeGiro = Math.abs(this.getPigeon2().getAngularVelocityZDevice().getValueAsDouble());
+        double velocidadeGiro = Math.abs(this.getPigeon2().getAngularVelocityZDevice().getValueAsDouble());
 
         // // Executa a atualização da odometria do robô no addVisionMesurement caso as seguintes condições sejam atendidas:
         // // i.    Existir alguma informação de bot pose da MT2;
         // // ii.   Alguma tag está sendo vista;
         // // iii.  Velocidade de giro for menor que 720 dps (graus por segundo);
         // // iiii. Distância média da TAG vista é inferior a 4 metros;
-        // if (mt2 != null && mt2.tagCount > 0 && velocidadeGiro < 720.0 && mt2.avgTagDist < 4.0) {
+        if (mt2 != null && mt2.tagCount > 0 && velocidadeGiro < 720.0 && mt2.avgTagDist < 4.0) {
             
-        //     // --- CÁLCULO DINÂMICO DE CONFIANÇA ---
-        //     double xyStdDev;
+            // --- CÁLCULO DINÂMICO DE CONFIANÇA ---
+            double xyStdDev;
             
-        //     if (mt2.tagCount >= 2) {
-        //         // Se ver 2 ou mais tags, a MegaTag é absurdamente precisa. Confiança máxima!
-        //         xyStdDev = 0.1; 
-        //     } else {
-        //         // Se ver 1 tag, a confiança diminui conforme a distância aumenta.
-        //         // Ex: A 1 metro = 0.3 (Confia muito). A 3.5 metros = 0.8 (Confia pouco)
-        //         xyStdDev = 0.1 + (mt2.avgTagDist * 0.2); 
-        //     }
+            if (mt2.tagCount >= 2) {
+                // Se ver 2 ou mais tags, a MegaTag é absurdamente precisa. Confiança máxima!
+                xyStdDev = 0.1; 
+            } else {
+                // Se ver 1 tag, a confiança diminui conforme a distância aumenta.
+                // Ex: A 1 metro = 0.3 (Confia muito). A 3.5 metros = 0.8 (Confia pouco)
+                xyStdDev = 0.1 + (mt2.avgTagDist * 0.2); 
+            }
 
         //     // Atualiza a informação da odometria do robô com base nas informações da câmera, pegando o X e Y com base em uma
         //     // confiança que varia dependendo do número de TAGs vistas e a distância média delas. Já o ângulo não confia nem um
         //     // pouco na câmera, logo, só acreditará no ângulo do pigeon.
-        //     this.addVisionMeasurement(
-        //         mt2.pose, 
-        //         mt2.timestampSeconds,
-        //         edu.wpi.first.math.VecBuilder.fill(xyStdDev, xyStdDev, 9999999.0)
-        //         //999999 pois o piegon é o responsavel pelo ângulo.
-        //     );
-        // }
+            this.addVisionMeasurement(
+                mt2.pose, 
+                mt2.timestampSeconds,
+                edu.wpi.first.math.VecBuilder.fill(xyStdDev, xyStdDev, 9999999.0)
+                //999999 pois o piegon é o responsavel pelo ângulo.
+            );
+        }
         //  /**/
     }
 
