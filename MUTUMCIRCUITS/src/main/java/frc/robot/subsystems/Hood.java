@@ -93,14 +93,14 @@ public class Hood extends Command {
     
         public Hood(CommandSwerveDrivetrain swerve) {
             this.swerve = swerve;
-            configHood(0.5, -0.05, 0.3);
+            configHood(0.75, -0.1, 0.45);
             configIndex(NeutralModeValue.Coast);
             configShooter(0.435, NeutralModeValue.Coast);
             configBelt(0.1, -0.1, 0.1);
         }
     
         public void execute() {
-    
+
             double blueX = 4.298;   // Aliança
             double redX = 12.41;    // Aliança
     
@@ -136,8 +136,7 @@ public class Hood extends Command {
             /*  Ajuste de target em função da arena - END */
             
             double distanceHood = hoodAling(targetX, targetY);
-    
-            /* Proteção da treanch - INIT */
+
             if((robotPose.getX() >= blueX-0.2 && robotPose.getX() <= (blueX-0.2)+1.2) || (robotPose.getX() >= (redX+0.2) - 1.2 && robotPose.getX() <= redX+0.2)){
                 poseHoodSim = -70;
                 poseHood = 0;
@@ -147,18 +146,24 @@ public class Hood extends Command {
             }
             else{
                 poseHoodSim = map(parabola(distanceHood, distanceHood < 3.45 ? 0.6 : 1, targetX, targetY, targetZ), 40, 80, -110, -70);
-                poseHood = map(parabola(distanceHood, distanceHood < 3.45 ? 0.6 : 1, targetX, targetY, targetZ), 79.5, 40.1, 0, 1.85);
-                RPMShooter = interpolate(distanceHood, distances, RPM);
+                
+                poseHood = map(parabola(Robot.auxiliar.getDouble(0), Robot.setHmax.getDouble(1.5), targetX, targetY, targetZ), 79.5, 40.1, 0.0, 1.85);
+                
+                //poseHood = map(parabola(distanceHood, distanceHood < 3.45 ? 0.6 : 1, targetX, targetY, targetZ), 79.5, 40.1, 0, 1.85);
+                // RPMShooter = interpolate(distanceHood, distances, RPM);
+                RPMShooter = Robot.RPMShooter.getDouble(0);
             }
-            /* Proteção da treanch - END */
+
+            Logger.recordOutput("HOOD/Ain/AngleParabola", parabola(Robot.auxiliar.getDouble(0), Robot.setHmax.getDouble(1.5), targetX, targetY, targetZ));
     
             setHoodPosition(poseHood);
+            //setShooterRPM(RPMShooter);
             setShooterRPM(RPMShooter);
     
             SubSystemSIM.setShooterVelocity(3.65);
     
-            RPMShooterOK = (Math.abs(targetRPMShooter - velocityShooter[0]) * 60) < 100 ? true : false;
-            boolean RPMIndexOK = ((targetRPMIndex - velocityIndex[1]) * 60) < 100 ? true : false;
+            RPMShooterOK = (Math.abs(targetRPMShooter - velocityShooter[0]) * 60) < 1000 ? true : false;
+            boolean RPMIndexOK = ((targetRPMIndex - velocityIndex[1]) * 60) < 1000 ? true : false;
     
             if(aligned){
                 if(ctrAligned) {
@@ -168,7 +173,7 @@ public class Hood extends Command {
                 }
     
                 if (RPMShooterOK && errorTimer(timerShot) > 0.5) {
-                    RPMIndex = RPMShooter;
+                    RPMIndex = RPMShooter * 1.1;
                     // RPMIndex = (RPMShooter / 2) - 50; //Colocar valor para Indexar
                     RPMBelt = 6000;
                     indexando = true;
@@ -205,12 +210,11 @@ public class Hood extends Command {
             Logger.recordOutput("HOOD/RPM/SetIndex", RPMIndex);
             Logger.recordOutput("HOOD/RPM/SetBelt", RPMBelt);
     
-            Logger.recordOutput("HOOD/RPM/targetShooter", targetRPMShooter);
-            Logger.recordOutput("HOOD/RPM/targetIndex", targetRPMIndex);
+            Logger.recordOutput("HOOD/RPM/targetShooter", targetRPMShooter * 60);
+            Logger.recordOutput("HOOD/RPM/targetIndex", targetRPMIndex *60);
             
             Logger.recordOutput("HOOD/Ain/DistanceHUB", distanceHood);
             Logger.recordOutput("HOOD/Ain/IntepolationRPM", interpolate(distanceHood, distances, RPM));
-            Logger.recordOutput("HOOD/Ain/AngleParabola", parabola(distanceHood, distanceHood < 3.45 ? 0.6 : 1, targetX, targetY, targetZ));
             Logger.recordOutput("HOOD/Position", getHoodPositon());
             Logger.recordOutput("HOOD/RPM/GetShotter1", getShooterVelocity()[0] * 60);
             Logger.recordOutput("HOOD/RPM/GetShooter2", getShooterVelocity()[1] * 60);
@@ -221,7 +225,7 @@ public class Hood extends Command {
             Logger.recordOutput("HOOD/RPM/GetIndex", getIndexVelocity()[1] * 60);
             Logger.recordOutput("HOOD/RPM/GetBelt", getBeltVelocity() * 60);
             Logger.recordOutput("HOOD/Ain/Aligned", aligned);
-    
+            
         }
     
         public boolean isFinished() {
@@ -281,7 +285,7 @@ public class Hood extends Command {
     */
     private void setIndexer (double RPMIndex, double RPMbelt) {
         setIndexRPM(RPMIndex);
-        setFeedRPM(RPMIndex * 0.666);
+        setFeedRPM(RPMIndex * 0.5);
         setBeltRPM(RPMbelt);
     }
 
@@ -397,7 +401,7 @@ public class Hood extends Command {
         // Rotation2d targetAngleRobot = angleHub.getAngle();
 
         double error = MathUtil.angleModulus(targetAngleHood.minus(Robot_Yaw).getRadians());
-        double kP = kPHeading.Carpete;
+        double kP = kPHeading.Liso;
         OmegaCmd = kP * error;
 
         OmegaCmd = MathUtil.clamp(OmegaCmd, -3, 3);
@@ -552,7 +556,6 @@ public class Hood extends Command {
     * @param null
     */
     static public void stopShooterSpeed() {
-        configShooter(0.11, NeutralModeValue.Coast);
         mShooterL.stopMotor();
         mShooterR.stopMotor();
     }
@@ -577,9 +580,9 @@ public class Hood extends Command {
         setpointRPM = MathUtil.clamp(setpointRPM, 0, 6000);
         this.targetRPMShooter = setpointRPM / 60.0;
 
-        double kS = 0.0;
+        double kS = 0.2;
         double kV = 0.118;
-        double kA = 0.05;
+        double kA = 1.0;
 
         SimpleMotorFeedforward feedforward = new SimpleMotorFeedforward(kS, kV, kA);
 
@@ -630,8 +633,8 @@ public class Hood extends Command {
         cfg.Slot0.kI = 0.0;
         cfg.Slot0.kD = 0.0;
 
-        cfg.OpenLoopRamps.DutyCycleOpenLoopRampPeriod = 0.2;
-        cfg.ClosedLoopRamps.DutyCycleClosedLoopRampPeriod = 0.1;
+        cfg.OpenLoopRamps.DutyCycleOpenLoopRampPeriod = 0;
+        cfg.ClosedLoopRamps.DutyCycleClosedLoopRampPeriod = 0;
 
         mHood.getConfigurator().apply(cfg);
     }
@@ -777,7 +780,6 @@ public class Hood extends Command {
     * @param null
     */
     static public void stopIndexSpeed() {
-        configIndex(NeutralModeValue.Coast);
         mFeed.stopMotor();
         mIndex.stopMotor();
     }

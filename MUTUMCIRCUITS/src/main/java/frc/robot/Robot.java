@@ -14,6 +14,7 @@ import org.littletonrobotics.junction.wpilog.WPILOGWriter;
 import com.ctre.phoenix6.HootAutoReplay;
 import com.ctre.phoenix6.hardware.Pigeon2;
 
+import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.networktables.GenericEntry;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.shuffleboard.BuiltInWidgets;
@@ -28,7 +29,6 @@ public class Robot extends LoggedRobot {
     private Command m_autonomousCommand;
 
   private RobotContainer m_robotContainer;
-//   private CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
 
   public static final Pigeon2 mPigeon2 = new Pigeon2(13);
 
@@ -44,14 +44,16 @@ public class Robot extends LoggedRobot {
   public static GenericEntry auxiliar2;
   public static GenericEntry Driver;
 
+   /* TEMOS PERGUNTAS */ //SetRobotOrientation 
+
 //   public static double[] pose = new double[3];
 
 //   private Hood mHood = new Hood();
 
     /* log and replay timestamp and joystick data */
-    private final HootAutoReplay m_timeAndJoystickReplay = new HootAutoReplay()
-        .withTimestampReplay()
-        .withJoystickReplay();
+    // private final HootAutoReplay m_timeAndJoystickReplay = new HootAutoReplay()
+    //     .withTimestampReplay()
+    //     .withJoystickReplay();
 
     public Robot() {
         m_robotContainer = new RobotContainer();
@@ -92,11 +94,12 @@ public class Robot extends LoggedRobot {
         m_robotContainer.mIntake.setZeroArticulated();
         m_robotContainer.mHood.setZeroHood();
         m_robotContainer.mClimber.setZeroClimber();
+
     }
 
     @Override
     public void robotPeriodic() {
-        m_timeAndJoystickReplay.update();
+        // m_timeAndJoystickReplay.update();
         CommandScheduler.getInstance().run();
 
         elapsedTime = Timer.getFPGATimestamp() - teleopStartTime;
@@ -141,7 +144,6 @@ public class Robot extends LoggedRobot {
         Logger.recordOutput("Hood/Index", Hood.getIndexVelocity());
         Logger.recordOutput("Hood/Shooter", Hood.getShooterVelocity());
         Logger.recordOutput("Climber", Climber.getPosition());
-
     }
 
     @Override

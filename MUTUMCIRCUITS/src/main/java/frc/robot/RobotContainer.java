@@ -31,7 +31,7 @@ public class RobotContainer {
     private double MaxSpeed = 1.0 * TunerConstants.kSpeedAt12Volts.in(MetersPerSecond);
     private double MaxAngularRate = RotationsPerSecond.of(0.75).in(RadiansPerSecond);
 
-    private final PIDController headingPid = new PIDController(3.0, 0.0, 0.0);
+    // private final PIDController headingPid = new PIDController(3.0, 0.0, 0.0);
 
     // // o robo ira dirigir de acordo com o campo.
     private final SwerveRequest.FieldCentric drive = new SwerveRequest.FieldCentric()
@@ -60,13 +60,13 @@ public class RobotContainer {
 
     public RobotContainer() {
 
-        headingPid.enableContinuousInput(-Math.PI, Math.PI);
-        headingPid.setTolerance(Math.toRadians(0.5));
+        // headingPid.enableContinuousInput(-Math.PI, Math.PI);
+        // headingPid.setTolerance(Math.toRadians(0.5));
 
         configureBindings();
 
-        NamedCommands.registerCommand("updateFrontCAM",
-        Commands.runOnce(() -> drivetrain.odometryUpdateAutonomo(drivetrain.mt2Front)));
+        // NamedCommands.registerCommand("updateFrontCAM",
+        // Commands.runOnce(() -> drivetrain.odometryUpdateAutonomo(drivetrain.mt2Front)));   bode bode
 
         NamedCommands.registerCommand("HOOD_HUB", new Hood(drivetrain));
 
@@ -95,8 +95,8 @@ public class RobotContainer {
             drivetrain.runOnce(() -> drivetrain.configAngleInit()),
             Commands.waitSeconds(0.1),
             drivetrain.runOnce(() -> {
-                headingPid.reset();
-                drivetrain.isHeadingLocked = false;
+                // headingPid.reset();
+                // drivetrain.isHeadingLocked = false;
             })));
 
         whileCommandOnCondition(()-> Hood.getAligned(), drivetrain.brakeX());
@@ -119,9 +119,13 @@ public class RobotContainer {
             Commands.runOnce(() -> Intake.setArticulated(0.015, 6, 0.1)),
             Commands.runOnce(() -> mIntake.setIntakeRPM(2500))));
 
-        activateCommandOnCondition(()-> Intake.getArticulatedPosition() < 8 && climberMove == 1, new SequentialCommandGroup(
+        activateCommandOnCondition(()-> Intake.getArticulatedPosition() > 6 && Intake.getArticulatedPosition() < 8 && climberMove == 1, new SequentialCommandGroup(
             Commands.runOnce(() -> mClimber.setPosition(drivetrain.getPose(), 0, 1)),
             Commands.runOnce(() -> climberMove = 0)));
+
+        activateCommandOnCondition(()-> Climber.getPosition() < 20 && Hood.getIndexando() && driver.getRightBumperButton(), 
+        Commands.runOnce(() -> Intake.setArticulated(0.015, 0, 0.1)));
+
 
         // Cmdriver.back().onTrue(Commands.runOnce(() -> mHood.setIndexRPM(150)));
 
@@ -163,10 +167,6 @@ public class RobotContainer {
         
         activateCommandOnCondition(()-> Climber.getPosition() < 10 && driver.getBButton(), 
         Commands.runOnce(() -> Intake.setArticulated(0.1, 0, 0.5)));
-
-        activateCommandOnCondition(()-> Climber.getPosition() < 20 && driver.getRightBumperButton(), 
-        Commands.runOnce(() -> Intake.setArticulated(0.05, 0, 0.5)));
-        
         
         /*  SIMULATION */
         activateCommandOnCondition(() -> intakectn == 1, new SequentialCommandGroup(

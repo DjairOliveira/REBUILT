@@ -44,16 +44,17 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     String leftCAM  = "limelight-left";
     String rightCAM = "limelight-right";
 
-    public LimelightHelpers.PoseEstimate mt2Front = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(frontCAM);     /* TEMOS PERGUNTAS */ //SetRobotOrientation
-    public LimelightHelpers.PoseEstimate mt2Left = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(leftCAM);       /* TEMOS PERGUNTAS */ //SetRobotOrientation
-    public LimelightHelpers.PoseEstimate mt2Right = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(rightCAM);     /* TEMOS PERGUNTAS */ //SetRobotOrientation 
+    // public LimelightHelpers.PoseEstimate mt2Front = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(frontCAM);     /* TEMOS PERGUNTAS */ //SetRobotOrientation
+    // public LimelightHelpers.PoseEstimate mt2Left = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(leftCAM);       /* TEMOS PERGUNTAS */ //SetRobotOrientation
+    // public LimelightHelpers.PoseEstimate mt2Right = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(rightCAM);     /* TEMOS PERGUNTAS */ //SetRobotOrientation 
 
-    public boolean isHeadingLocked = false;
+    // public boolean isHeadingLocked = false;
 
     private double fixedAngle = 0;
 
     private double colisionProtect = 1;
     private static double OmegaCmd = 0;
+    private boolean ctrInit = false;
 
     private static final double kSimLoopPeriod = 0.004; // 4 ms
     private Notifier m_simNotifier = null;
@@ -93,77 +94,71 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     @Override
     public void periodic() {
 
-        if (!m_hasAppliedOperatorPerspective || DriverStation.isDisabled()) {
-            DriverStation.getAlliance().ifPresent(allianceColor -> {
-                setOperatorPerspectiveForward(
-                    allianceColor == Alliance.Red
-                        ? kRedAlliancePerspectiveRotation   
-                        : kBlueAlliancePerspectiveRotation  
-                );
-                m_hasAppliedOperatorPerspective = true;
-            });
+        var mt2Front = LimelightHelpers.getBotPoseEstimate_wpiBlue(frontCAM);
+        var mt2Left = LimelightHelpers.getBotPoseEstimate_wpiBlue(leftCAM);
+        var mt2Right = LimelightHelpers.getBotPoseEstimate_wpiBlue(rightCAM);
+
+        if(ctrInit){
+            if(mt2Front != null && mt2Front.tagCount > 1 && mt2Front.avgTagDist < 4){
+                Pose2d pose = mt2Front.pose;
+                configAngleInit(pose.getRotation().getDegrees());
+                fixedAngle = -pose.getRotation().getDegrees();
+            }
+
+            if(mt2Left != null && mt2Left.tagCount > 1 && mt2Left.avgTagDist < 4){
+                Pose2d pose = mt2Left.pose;
+                configAngleInit(pose.getRotation().getDegrees());
+                fixedAngle = -pose.getRotation().getDegrees();
+            }
+
+            if(mt2Right != null && mt2Right.tagCount > 1 && mt2Right.avgTagDist < 4){
+                Pose2d pose = mt2Right.pose;
+                configAngleInit(pose.getRotation().getDegrees());
+                fixedAngle = -pose.getRotation().getDegrees();
+            }
+            
+            ctrInit = false;
         }
+
+        // if (!m_hasAppliedOperatorPerspective || DriverStation.isDisabled()) {
+        //     DriverStation.getAlliance().ifPresent(allianceColor -> {
+        //         setOperatorPerspectiveForward(
+        //             allianceColor == Alliance.Red
+        //                 ? kRedAlliancePerspectiveRotation   
+        //                 : kBlueAlliancePerspectiveRotation  
+        //         );
+        //         m_hasAppliedOperatorPerspective = true;
+        //     });
+        // }
 
         double YawRaw = this.getPigeon2().getYaw().getValueAsDouble();
         double YawReal = YawRaw * Constants.FATOR_ESCALA_PIGEON;
         double YawWrapping = MathUtil.inputModulus(YawReal, -180, 180);
 
-        updateLimelightAngle(frontCAM, YawWrapping);
-        updateLimelightAngle(leftCAM, YawWrapping);
-        updateLimelightAngle(rightCAM, YawWrapping);
+        // updateLimelightAngle(frontCAM, YawWrapping);
+        // updateLimelightAngle(leftCAM, YawWrapping);
+        // updateLimelightAngle(rightCAM, YawWrapping);
 
-        var front = LimelightHelpers.getBotPoseEstimate_wpiBlue(frontCAM);
-        var left = LimelightHelpers.getBotPoseEstimate_wpiBlue(leftCAM);
-        var right = LimelightHelpers.getBotPoseEstimate_wpiBlue(rightCAM);
+        double omega = Math.abs(this.getPigeon2().getAngularVelocityZDevice().getValueAsDouble());
 
-        // if (isValid(front)) {
-        //     if (megaTagUpdateOdometry(mt2Front, 4, 720)) {
-        //         double xyStdDev;
-        //         if (mt2Front.tagCount >= 2) xyStdDev = 0.1; 
-        //         else xyStdDev = 0.1 + (mt2Front.avgTagDist * 0.2); 
-        //         this.addVisionMeasurement(mt2Front.pose, mt2Front.timestampSeconds,
-        //             edu.wpi.first.math.VecBuilder.fill(xyStdDev, xyStdDev, 9999999.0)
-        //         );
-        //     }
-        // }
+        if (megaTagUpdateOdometry(mt2Front, 4, 30, omega)) {
+            double xyStdDev = mt2Front.tagCount > 2 ? 0.1 : 0.1 + (mt2Front.avgTagDist * 0.2);
+            addVisionMeasurement(mt2Front.pose, mt2Front.timestampSeconds, edu.wpi.first.math.VecBuilder.fill(xyStdDev, xyStdDev, 999999.0));
+            updateLimelightAngle(frontCAM, YawWrapping);
+            Logger.recordOutput("VISION/Front", mt2Front.pose);
+        }
+        
+        if (megaTagUpdateOdometry(mt2Left, 4, 30, omega)) {
+            double xyStdDev = mt2Left.tagCount > 2 ? 0.1 : 0.1 + (mt2Left.avgTagDist * 0.2);
+            addVisionMeasurement(mt2Left.pose, mt2Left.timestampSeconds, edu.wpi.first.math.VecBuilder.fill(xyStdDev, xyStdDev, 999999.0));
+            Logger.recordOutput("VISION/Left", mt2Left.pose);
+        }
 
-        // if (isValid(left)) {
-        //     if (megaTagUpdateOdometry(mt2Left, 3.5, 720)) {
-        //         double xyStdDev;
-        //         if (mt2Left.tagCount >= 2) xyStdDev = 0.1; 
-        //         else xyStdDev = 0.1 + (mt2Left.avgTagDist * 0.2); 
-        //         this.addVisionMeasurement(mt2Left.pose, mt2Left.timestampSeconds,
-        //             edu.wpi.first.math.VecBuilder.fill(xyStdDev, xyStdDev, 9999999.0)
-        //         );
-        //     }
-        // }
-
-        // if (isValid(right)) {
-        //     if (megaTagUpdateOdometry(mt2Right, 3.5, 720)) {
-        //         double xyStdDev;
-        //         if (mt2Right.tagCount >= 2) xyStdDev = 0.1; 
-        //         else xyStdDev = 0.1 + (mt2Right.avgTagDist * 0.2); 
-        //         this.addVisionMeasurement(mt2Right.pose, mt2Right.timestampSeconds,
-        //             edu.wpi.first.math.VecBuilder.fill(xyStdDev, xyStdDev, 9999999.0)
-        //         );
-        //     }
-        // }
-
-        // if (isValid(front)) {
-        //     megaTagUpdateOdometry(mt2Front, 4, 30);
-        //     addVisionMeasurement(front.pose, front.timestampSeconds, edu.wpi.first.math.VecBuilder.fill(0.1, 0.1, 999999.0));
-        // }
-
-        // if (isValid(left)) {
-        //     megaTagUpdateOdometry(mt2Left, 4, 30);
-        //     addVisionMeasurement(left.pose, left.timestampSeconds, edu.wpi.first.math.VecBuilder.fill(0.1, 0.1, 999999.0));
-        // }
-
-        // if (isValid(right)) {
-        //     megaTagUpdateOdometry(mt2Right, 4, 30);
-        //     addVisionMeasurement(right.pose, right.timestampSeconds, edu.wpi.first.math.VecBuilder.fill(0.1, 0.1, 999999.0));
-        // }
-
+        if (megaTagUpdateOdometry(mt2Right, 4, 30, omega)) {
+            double xyStdDev = mt2Right.tagCount > 2 ? 0.1 : 0.1 + (mt2Right.avgTagDist * 0.2);
+            addVisionMeasurement(mt2Right.pose, mt2Right.timestampSeconds, edu.wpi.first.math.VecBuilder.fill(xyStdDev, xyStdDev, 999999.0));
+            Logger.recordOutput("VISION/Right", mt2Right.pose);
+        }
 
         Pose2d currentPose = this.getState().Pose;
         Rotation2d heading = currentPose.getRotation();
@@ -265,50 +260,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         Logger.recordOutput("VISION/mt2Front", mt2Front != null ? mt2Front.pose.getX() : 0.0);
         Logger.recordOutput("VISION/mt2Left", mt2Left != null ? mt2Left.pose.getX() : 0.0);
         Logger.recordOutput("VISION/mt2Right", mt2Right != null ? mt2Right.pose.getX() : 0.0);
-        
-        // /* VISÃO MUTUM */
-        // // 4. Envia o ÂNGULO VERDADEIRO para Limelight (MegaTag 2). Ela precisa saber qual o ângulo do robô para definir de onde
-        // // o robô está olhando para a TAG quando a limelight ver uma TAG.
-        
-        // // LimelightHelpers.SetRobotOrientation("limelight", anguloCorrigidoLL, 0, 0, 0, 0, 0);
 
-        // // 5. Obtém as informações completas que a limelight está coletando: coordenada X, Y, quantas tags está vendo, etc.
-        // // Ela só obterá as informações corretamente se você enviar o ângulo correto anteriormente no SetRobotOrientation 
-        LimelightHelpers.PoseEstimate mt2 = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2("limelight-front");
-
-        // // 6. Pega a velocidade de giro do robô (para não confiar na câmera se estivermos girando muito rápido).
-        double velocidadeGiro = Math.abs(this.getPigeon2().getAngularVelocityZDevice().getValueAsDouble());
-
-        // // Executa a atualização da odometria do robô no addVisionMesurement caso as seguintes condições sejam atendidas:
-        // // i.    Existir alguma informação de bot pose da MT2;
-        // // ii.   Alguma tag está sendo vista;
-        // // iii.  Velocidade de giro for menor que 720 dps (graus por segundo);
-        // // iiii. Distância média da TAG vista é inferior a 4 metros;
-        if (mt2 != null && mt2.tagCount > 0 && velocidadeGiro < 720.0 && mt2.avgTagDist < 4.0) {
-            
-            // --- CÁLCULO DINÂMICO DE CONFIANÇA ---
-            double xyStdDev;
-            
-            if (mt2.tagCount >= 2) {
-                // Se ver 2 ou mais tags, a MegaTag é absurdamente precisa. Confiança máxima!
-                xyStdDev = 0.1; 
-            } else {
-                // Se ver 1 tag, a confiança diminui conforme a distância aumenta.
-                // Ex: A 1 metro = 0.3 (Confia muito). A 3.5 metros = 0.8 (Confia pouco)
-                xyStdDev = 0.1 + (mt2.avgTagDist * 0.2); 
-            }
-
-        //     // Atualiza a informação da odometria do robô com base nas informações da câmera, pegando o X e Y com base em uma
-        //     // confiança que varia dependendo do número de TAGs vistas e a distância média delas. Já o ângulo não confia nem um
-        //     // pouco na câmera, logo, só acreditará no ângulo do pigeon.
-            this.addVisionMeasurement(
-                mt2.pose, 
-                mt2.timestampSeconds,
-                edu.wpi.first.math.VecBuilder.fill(xyStdDev, xyStdDev, 9999999.0)
-                //999999 pois o piegon é o responsavel pelo ângulo.
-            );
-        }
-        //  /**/
     }
 
     public boolean isValid(LimelightHelpers.PoseEstimate est) {
@@ -317,9 +269,13 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         && est.avgTagDist < 4.0;   // distância máxima
     }
 
-    public boolean megaTagUpdateOdometry(LimelightHelpers.PoseEstimate mt2, double maxDistanceTAG, double maxRotation) {
-        double omega = Math.abs(this.getPigeon2().getAngularVelocityZDevice().getValueAsDouble());
-        return mt2 != null && mt2.tagCount > 0 && mt2.avgTagDist < maxDistanceTAG && omega < maxRotation ? true : false;
+    // public boolean megaTagUpdateOdometry(LimelightHelpers.PoseEstimate mt2, double maxDistanceTAG, double maxRotation) {
+    //     double omega = Math.abs(this.getPigeon2().getAngularVelocityZDevice().getValueAsDouble());
+    //     return mt2 != null && mt2.tagCount > 1 && mt2.avgTagDist < maxDistanceTAG && omega < maxRotation ? true : false;
+    // }
+
+    public boolean megaTagUpdateOdometry(LimelightHelpers.PoseEstimate mt2, double maxDistanceTAG, double maxRotation, double omega) {
+        return mt2 != null && mt2.tagCount > 1 && mt2.avgTagDist < maxDistanceTAG && omega < maxRotation ? true : false;
     }
 
     public void updateLimelightAngle(String limelightName, double newAngle) {
@@ -380,6 +336,10 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     public void odometryUpdateAutonomo() {
         double velocidadeGiro = Math.abs(this.getPigeon2().getAngularVelocityZDevice().getValueAsDouble());
 
+        var mt2Front = LimelightHelpers.getBotPoseEstimate_wpiBlue(frontCAM);
+        var mt2Left = LimelightHelpers.getBotPoseEstimate_wpiBlue(leftCAM);
+        var mt2Right = LimelightHelpers.getBotPoseEstimate_wpiBlue(rightCAM);
+
         if (mt2Front != null && mt2Front.tagCount > 0 && mt2Front.avgTagDist < 3.5 && velocidadeGiro < 45.0) {
             Pose2d currentPose = this.getState().Pose;
             Pose2d newPose = new Pose2d(mt2Front.pose.getTranslation(), currentPose.getRotation());
@@ -405,8 +365,8 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     * @param mt2 MegaTAG2 relacionado a camera alvo.
     */
     public void odometryUpdateAutonomo(LimelightHelpers.PoseEstimate mt2) {
-        
-        if (megaTagUpdateOdometry(mt2, 3.5, 45.0)) {
+        double omega = Math.abs(this.getPigeon2().getAngularVelocityZDevice().getValueAsDouble());
+        if (megaTagUpdateOdometry(mt2, 3.5, 45.0, omega)) {
             Pose2d currentPose = this.getState().Pose;
             Pose2d newPose = new Pose2d(mt2.pose.getTranslation(), currentPose.getRotation());
 
@@ -418,6 +378,18 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     public void configAngleInit() {
         var alliance = DriverStation.getAlliance();
         double novoAngulo = (alliance.isPresent() && alliance.get() == Alliance.Red) ? 180.0 : 0;
+
+        this.getPigeon2().setYaw(novoAngulo);
+        try { Thread.sleep(20); } catch (Exception e) {}
+
+        Pose2d poseAtual = this.getState().Pose;
+        this.resetPose(new Pose2d(poseAtual.getTranslation(), Rotation2d.fromDegrees(novoAngulo)));
+        
+        System.out.println("Giroscópio Resetado fisicamente para: " + novoAngulo + " graus");
+    }
+
+    public void configAngleInit(double newAngle) {
+        double novoAngulo = newAngle;
 
         this.getPigeon2().setYaw(novoAngulo);
         try { Thread.sleep(20); } catch (Exception e) {}
