@@ -111,7 +111,7 @@ public class Intake {
     * @param maxRPMKraken 6000.
     */
     public void setIntakeRPM(double setpointRPM){
-        setpointRPM = MathUtil.clamp(setpointRPM, 0, 6000);
+        setpointRPM = MathUtil.clamp(setpointRPM, -6000, 6000);
 
         this.targetRPMIntake = setpointRPM / 60.0;
         double kV = 0.115;

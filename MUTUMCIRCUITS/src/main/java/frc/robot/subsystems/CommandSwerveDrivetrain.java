@@ -7,6 +7,7 @@ import org.littletonrobotics.junction.Logger;
 
 import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.swerve.SwerveDrivetrainConstants;
+import com.ctre.phoenix6.swerve.SwerveModule;
 import com.ctre.phoenix6.swerve.SwerveModuleConstants;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 
@@ -15,6 +16,7 @@ import edu.wpi.first.math.Matrix;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
+import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.math.kinematics.ChassisSpeeds;
 import edu.wpi.first.math.numbers.N1;
 import edu.wpi.first.math.numbers.N3;
@@ -34,6 +36,7 @@ import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 
 import frc.robot.Constants;
 import frc.robot.LimelightHelpers;
+import frc.robot.generated.TunerConstants;
 import frc.robot.generated.TunerConstants.TunerSwerveDrivetrain;
 
 public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Subsystem {
@@ -44,17 +47,18 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     String leftCAM  = "limelight-left";
     String rightCAM = "limelight-right";
 
-    // public LimelightHelpers.PoseEstimate mt2Front = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(frontCAM);     /* TEMOS PERGUNTAS */ //SetRobotOrientation
-    // public LimelightHelpers.PoseEstimate mt2Left = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(leftCAM);       /* TEMOS PERGUNTAS */ //SetRobotOrientation
-    // public LimelightHelpers.PoseEstimate mt2Right = LimelightHelpers.getBotPoseEstimate_wpiBlue_MegaTag2(rightCAM);     /* TEMOS PERGUNTAS */ //SetRobotOrientation 
+    PIDController headingPID = new PIDController(0.025, 0.0001, 0.001);
 
-    // public boolean isHeadingLocked = false;
+    private double MaxAngularRate = Math.PI * 1.5; // ~4.7 rad/s
 
     private double fixedAngle = 0;
 
     private double colisionProtect = 1;
     private static double OmegaCmd = 0;
-    private boolean ctrInit = false;
+    private boolean ctrInit = true;
+
+    public boolean shotOk = false;
+    public boolean alinhoAuto = false;
 
     private static final double kSimLoopPeriod = 0.004; // 4 ms
     private Notifier m_simNotifier = null;
@@ -94,69 +98,61 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     @Override
     public void periodic() {
 
+        if (!m_hasAppliedOperatorPerspective || DriverStation.isDisabled()) {
+            DriverStation.getAlliance().ifPresent(allianceColor -> {
+                setOperatorPerspectiveForward(
+                    allianceColor == Alliance.Red
+                        ? kRedAlliancePerspectiveRotation   
+                        : kBlueAlliancePerspectiveRotation  
+                );
+                m_hasAppliedOperatorPerspective = true;
+            });
+        }
+
         var mt2Front = LimelightHelpers.getBotPoseEstimate_wpiBlue(frontCAM);
         var mt2Left = LimelightHelpers.getBotPoseEstimate_wpiBlue(leftCAM);
         var mt2Right = LimelightHelpers.getBotPoseEstimate_wpiBlue(rightCAM);
 
         if(ctrInit){
-            if(mt2Front != null && mt2Front.tagCount > 1 && mt2Front.avgTagDist < 4){
-                Pose2d pose = mt2Front.pose;
-                configAngleInit(pose.getRotation().getDegrees());
-                fixedAngle = -pose.getRotation().getDegrees();
-            }
+            fixedAngle = isRedAlliance() ? 0 : 180;
 
-            if(mt2Left != null && mt2Left.tagCount > 1 && mt2Left.avgTagDist < 4){
-                Pose2d pose = mt2Left.pose;
-                configAngleInit(pose.getRotation().getDegrees());
-                fixedAngle = -pose.getRotation().getDegrees();
-            }
+            headingPID.enableContinuousInput(-180, 180);
+            headingPID.setTolerance(0.5);
 
-            if(mt2Right != null && mt2Right.tagCount > 1 && mt2Right.avgTagDist < 4){
-                Pose2d pose = mt2Right.pose;
-                configAngleInit(pose.getRotation().getDegrees());
-                fixedAngle = -pose.getRotation().getDegrees();
-            }
-            
             ctrInit = false;
         }
 
-        // if (!m_hasAppliedOperatorPerspective || DriverStation.isDisabled()) {
-        //     DriverStation.getAlliance().ifPresent(allianceColor -> {
-        //         setOperatorPerspectiveForward(
-        //             allianceColor == Alliance.Red
-        //                 ? kRedAlliancePerspectiveRotation   
-        //                 : kBlueAlliancePerspectiveRotation  
-        //         );
-        //         m_hasAppliedOperatorPerspective = true;
-        //     });
-        // }
-
         double YawRaw = this.getPigeon2().getYaw().getValueAsDouble();
-        double YawReal = YawRaw * Constants.FATOR_ESCALA_PIGEON;
+        // double YawReal = YawRaw * Constants.FATOR_ESCALA_PIGEON;
+        double YawReal = YawRaw;
         double YawWrapping = MathUtil.inputModulus(YawReal, -180, 180);
-
-        // updateLimelightAngle(frontCAM, YawWrapping);
-        // updateLimelightAngle(leftCAM, YawWrapping);
-        // updateLimelightAngle(rightCAM, YawWrapping);
 
         double omega = Math.abs(this.getPigeon2().getAngularVelocityZDevice().getValueAsDouble());
 
         if (megaTagUpdateOdometry(mt2Front, 4, 30, omega)) {
             double xyStdDev = mt2Front.tagCount > 2 ? 0.1 : 0.1 + (mt2Front.avgTagDist * 0.2);
-            addVisionMeasurement(mt2Front.pose, mt2Front.timestampSeconds, edu.wpi.first.math.VecBuilder.fill(xyStdDev, xyStdDev, 999999.0));
+            Pose2d visionPose = new Pose2d(mt2Front.pose.getTranslation(), new Rotation2d(Math.toRadians(YawWrapping)));
+
+            addVisionMeasurement(visionPose, mt2Front.timestampSeconds, edu.wpi.first.math.VecBuilder.fill(xyStdDev, xyStdDev, 999999.0));
             updateLimelightAngle(frontCAM, YawWrapping);
             Logger.recordOutput("VISION/Front", mt2Front.pose);
         }
-        
+
+        Logger.recordOutput("VISION/HEADING", getHeading());
+
         if (megaTagUpdateOdometry(mt2Left, 4, 30, omega)) {
             double xyStdDev = mt2Left.tagCount > 2 ? 0.1 : 0.1 + (mt2Left.avgTagDist * 0.2);
-            addVisionMeasurement(mt2Left.pose, mt2Left.timestampSeconds, edu.wpi.first.math.VecBuilder.fill(xyStdDev, xyStdDev, 999999.0));
+            Pose2d visionPose = new Pose2d(mt2Left.pose.getTranslation(), new Rotation2d(Math.toRadians(YawWrapping)));
+
+            addVisionMeasurement(visionPose, mt2Left.timestampSeconds, edu.wpi.first.math.VecBuilder.fill(xyStdDev, xyStdDev, 999999.0));
             Logger.recordOutput("VISION/Left", mt2Left.pose);
         }
 
         if (megaTagUpdateOdometry(mt2Right, 4, 30, omega)) {
             double xyStdDev = mt2Right.tagCount > 2 ? 0.1 : 0.1 + (mt2Right.avgTagDist * 0.2);
-            addVisionMeasurement(mt2Right.pose, mt2Right.timestampSeconds, edu.wpi.first.math.VecBuilder.fill(xyStdDev, xyStdDev, 999999.0));
+            Pose2d visionPose = new Pose2d(mt2Right.pose.getTranslation(), new Rotation2d(Math.toRadians(YawWrapping)));
+
+            addVisionMeasurement(visionPose, mt2Right.timestampSeconds, edu.wpi.first.math.VecBuilder.fill(xyStdDev, xyStdDev, 999999.0));
             Logger.recordOutput("VISION/Right", mt2Right.pose);
         }
 
@@ -200,9 +196,6 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             colisionProtect = 1;
         }
 
-        double anguloAcumuladoBruto = getPigeon2().getYaw().getValueAsDouble();
-        double anguloRealModulado = MathUtil.inputModulus(anguloAcumuladoBruto * Constants.FATOR_ESCALA_PIGEON, -180, 180);
-        
         if(m_Control.getYButton()){
             double currentDeg = getHeading().getDegrees();
             double targetDeg = 0;
@@ -213,44 +206,59 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             else if(currentDeg >= -180 && currentDeg < -90) targetDeg = -135;
 
             Rotation2d targetAngle = Rotation2d.fromDegrees(targetDeg);
-            double error = MathUtil.angleModulus(targetAngle.minus(getHeading()).getRadians());
+            // double error = MathUtil.angleModulus(targetAngle.minus(getHeading()).getRadians());
 
-            double kP = 1;
-            OmegaCmd = kP * error;
+            OmegaCmd = headingPID.calculate(getHeading().getDegrees(), targetAngle.getDegrees());
 
-            OmegaCmd = MathUtil.clamp(OmegaCmd, -3, 3);
+            // OmegaCmd = MathUtil.clamp(OmegaCmd, -0.7, 0.7);
+     
+            // double kP = 1;
+            // OmegaCmd = kP * error;
 
-            fixedAngle = anguloRealModulado;
+            OmegaCmd = MathUtil.clamp(OmegaCmd, -1, 1);
+
+            fixedAngle = YawWrapping;
 
             /*  analizar a possibilidade de mudar isso juntando os dois */
         }
         else if(Math.abs(m_Control.getRightX()) < 0.1){
-            if(m_Control.getRightBumperButton()){       ///// talvez tenha que deixar independente
+            if(m_Control.getRightBumperButton()){
                 OmegaCmd = Hood.getOmega();
-                fixedAngle = anguloRealModulado;
+                fixedAngle = YawWrapping;
+                Logger.recordOutput("to aqui men", "TO MEMO");
             }
             else{
-                Pose2d robot_getValues = getPose();
-                Rotation2d Robot_Yaw = robot_getValues.getRotation();
+                // Pose2d robot_getValues = getPose();
+                // Rotation2d Robot_Yaw = robot_getValues.getRotation();
 
                 Rotation2d targetAngle = Rotation2d.fromDegrees(fixedAngle);
-                double error = MathUtil.angleModulus(targetAngle.minus(Robot_Yaw).getRadians());
+                // double error = MathUtil.angleModulus(targetAngle.minus(Robot_Yaw).getRadians());
 
-                double kP = 1.15;
-                OmegaCmd = kP * error;
+                // double kP = 1.15;
+                // OmegaCmd = kP * error;
+
+                OmegaCmd = headingPID.calculate(fixedAngle, targetAngle.getDegrees());
                 
-                OmegaCmd = MathUtil.clamp(OmegaCmd, -3, 3);
+                OmegaCmd = MathUtil.clamp(OmegaCmd, -1, 1);
             }
         }
         else{
-            fixedAngle = anguloRealModulado;
+            if(m_Control.getRightBumperButton()){
+                OmegaCmd = Hood.getOmega();
+            }
+            fixedAngle = YawWrapping;
             OmegaCmd = -m_Control.getRightX();
         }
 
-        double pigeonMentirosoTela = MathUtil.inputModulus(YawRaw, -180, 180);
-        SmartDashboard.putNumber("PIGEON/Raw", YawWrapping);
-        SmartDashboard.putNumber("PIGOEN/Liar", pigeonMentirosoTela);
-        SmartDashboard.putNumber("PIGEON/Real", YawReal);
+        Hood.setRobotPose(currentPose);
+
+        Logger.recordOutput("shotOk", shotOk);
+        Logger.recordOutput("OmegaCmd", OmegaCmd);
+
+        Logger.recordOutput("PIGEON/Raw", YawWrapping);
+        Logger.recordOutput("PIGEON/Liar", MathUtil.inputModulus(YawRaw, -180, 180));
+        Logger.recordOutput("PIGEON/Real", YawReal);
+        Logger.recordOutput("PIGEON/fixed", fixedAngle);
 
         Logger.recordOutput("ODOMETRIA", currentPose);
 
@@ -260,7 +268,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         Logger.recordOutput("VISION/mt2Front", mt2Front != null ? mt2Front.pose.getX() : 0.0);
         Logger.recordOutput("VISION/mt2Left", mt2Left != null ? mt2Left.pose.getX() : 0.0);
         Logger.recordOutput("VISION/mt2Right", mt2Right != null ? mt2Right.pose.getX() : 0.0);
-
+        Logger.recordOutput("AUTO/OmegaFinal", shotOk ? Hood.getOmega() * MaxAngularRate : getState().Speeds.omegaRadiansPerSecond);
     }
 
     public boolean isValid(LimelightHelpers.PoseEstimate est) {
@@ -307,20 +315,16 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         try {
             //pega o arquivo .json com as configs do robo.
             RobotConfig config = RobotConfig.fromGUISettings();
+
             AutoBuilder.configure(
-                //ja pega a pose com a odometria, limelight etc.
-                () -> getState().Pose, 
-                //consumer
+                () -> getState().Pose,
                 this::resetPose, 
-                // controle de feedforward
                 () -> getState().Speeds, 
-                //consumer do ff
                 (speeds, feedforwards) -> setControl(autoRequest.withSpeeds(speeds)),
+
                 // PID que o robô utilizará para translação e para rotação durante o Autônomo
                 new PPHolonomicDriveController(new PIDConstants(5, 0.0, 0.0), new PIDConstants(5, 0.0, 0.0)),
-                // Configurações do PathPlanner do robô
                 config, 
-                // Decide se o caminho precisa ser espelhado. 
                 () -> DriverStation.getAlliance().orElse(DriverStation.Alliance.Blue) == DriverStation.Alliance.Red, 
                 this
             ); 
@@ -329,6 +333,56 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         }
     }
 
+    public Command alignToTargetCommand(double targetX, double targetY) {
+        PIDController alignPid = new PIDController(1.5, 0.0, 0.0);
+        alignPid.enableContinuousInput(-Math.PI, Math.PI);
+        alignPid.setTolerance(Math.toRadians(3));
+
+        SwerveRequest.FieldCentric holdAndRotate = new SwerveRequest.FieldCentric()
+            .withDriveRequestType(SwerveModule.DriveRequestType.OpenLoopVoltage);
+
+        return run(() -> {
+            Pose2d pose = getPose();
+            Translation2d robot = pose.getTranslation();
+            Rotation2d heading = pose.getRotation();
+
+            Translation2d target = new Translation2d(targetX, targetY);
+            Rotation2d desiredAngle = target.minus(robot).getAngle();
+
+            double omega = alignPid.calculate(
+                heading.getRadians(),
+                desiredAngle.getRadians()
+            );
+
+            omega = MathUtil.clamp(omega, -3, 3);
+
+            setControl(
+                holdAndRotate
+                    .withVelocityX(0.0)
+                    .withVelocityY(0.0)
+                    .withRotationalRate(omega * 4.5)
+            );
+        }).until(() -> {
+            Pose2d pose = getPose();
+            Rotation2d heading = pose.getRotation();
+            Rotation2d desiredAngle =
+                new Translation2d(targetX, targetY)
+                    .minus(pose.getTranslation())
+                    .getAngle();
+
+            double error = MathUtil.angleModulus(
+                desiredAngle.minus(heading).getRadians()
+            );
+
+            alinhoAuto = Math.abs(error) < Math.toRadians(3) ? true : false;
+            Hood.getAlingAuto(alinhoAuto);
+            return Math.abs(error) < Math.toRadians(3);
+        });
+    }
+
+    public boolean getAlinhou(){
+        return alinhoAuto;
+    }
     /**
     * Metodo utilizado para atualizar a odometria do robo de forma precisa quando o mesmo se encontra parado.
     * @param mt2 MegaTAG2 relacionado a camera alvo.
@@ -376,28 +430,33 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     }
 
     public void configAngleInit() {
-        var alliance = DriverStation.getAlliance();
-        double novoAngulo = (alliance.isPresent() && alliance.get() == Alliance.Red) ? 180.0 : 0;
+        double newAngle = isRedAlliance() ? 0.0 : 180.0;
+        // newAngle = 180;
 
-        this.getPigeon2().setYaw(novoAngulo);
+        this.getPigeon2().setYaw(newAngle);
         try { Thread.sleep(20); } catch (Exception e) {}
 
-        Pose2d poseAtual = this.getState().Pose;
-        this.resetPose(new Pose2d(poseAtual.getTranslation(), Rotation2d.fromDegrees(novoAngulo)));
+        Pose2d currentPose = this.getState().Pose;
+        this.resetPose(new Pose2d(currentPose.getTranslation(), Rotation2d.fromDegrees(newAngle)));
         
-        System.out.println("Giroscópio Resetado fisicamente para: " + novoAngulo + " graus");
+        System.out.println("Giroscópio Resetado fisicamente para: " + newAngle + " graus");
     }
 
     public void configAngleInit(double newAngle) {
-        double novoAngulo = newAngle;
+        // newAngle += isRedAlliance() ? 180.0 : 0;
 
-        this.getPigeon2().setYaw(novoAngulo);
+        this.getPigeon2().setYaw(newAngle);
         try { Thread.sleep(20); } catch (Exception e) {}
 
-        Pose2d poseAtual = this.getState().Pose;
-        this.resetPose(new Pose2d(poseAtual.getTranslation(), Rotation2d.fromDegrees(novoAngulo)));
+        Pose2d currentPose = this.getState().Pose;
+        this.resetPose(new Pose2d(currentPose.getTranslation(), Rotation2d.fromDegrees(newAngle)));
         
-        System.out.println("Giroscópio Resetado fisicamente para: " + novoAngulo + " graus");
+        System.out.println("Giroscópio Resetado fisicamente para: " + newAngle + " graus");
+    }
+
+    private static boolean isRedAlliance() {
+        var alliance = DriverStation.getAlliance();
+        return alliance.isPresent() ? alliance.get() == DriverStation.Alliance.Red : false;
     }
 
     private void startSimThread() {
@@ -409,6 +468,10 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             updateSimState(deltaTime, RobotController.getBatteryVoltage());
         });
         m_simNotifier.startPeriodic(kSimLoopPeriod);
+    }
+
+    public void setShot(boolean shotOK){
+        this.shotOk = shotOK;
     }
 
     @Override

@@ -12,8 +12,10 @@ import com.ctre.phoenix6.swerve.SwerveModule.DriveRequestType;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.auto.NamedCommands;
+import com.pathplanner.lib.events.EventTrigger;
 
 import edu.wpi.first.math.controller.PIDController;
+import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
@@ -41,6 +43,8 @@ public class RobotContainer {
     // @SuppressWarnings("unused")
     // private final Telemetry logger = new Telemetry(MaxSpeed);
 
+    private boolean HoodOK = false;
+
     final CommandXboxController Cmdriver = new CommandXboxController(0);
     public XboxController driver = new XboxController(0);
 
@@ -48,7 +52,7 @@ public class RobotContainer {
 
     private CommandSwerveDrivetrain drivetrain = TunerConstants.createDrivetrain();
 
-    public Hood mHood = new Hood(drivetrain);
+    public Hood mHood = new Hood();
     public Intake mIntake = new Intake();
     public Climber mClimber = new Climber();
     public SubSystemSIM mSim = new SubSystemSIM();
@@ -60,22 +64,68 @@ public class RobotContainer {
 
     public RobotContainer() {
 
-        // headingPid.enableContinuousInput(-Math.PI, Math.PI);
-        // headingPid.setTolerance(Math.toRadians(0.5));
-
         configureBindings();
 
         // NamedCommands.registerCommand("updateFrontCAM",
         // Commands.runOnce(() -> drivetrain.odometryUpdateAutonomo(drivetrain.mt2Front)));   bode bode
+        NamedCommands.registerCommand(
+            "HOOD_SHOOT",
+            Commands.sequence(
+                Commands.runOnce(() -> HoodOK = true),
 
-        NamedCommands.registerCommand("HOOD_HUB", new Hood(drivetrain));
+                Commands.waitUntil(() ->
+                    Hood.getAligned() && Hood.getIndexando()
+                ),
+
+                Commands.waitSeconds(4),
+
+                Commands.runOnce(() -> HoodOK = false),
+                Commands.runOnce(() -> mHood.end())
+            )
+        );
+
+        NamedCommands.registerCommand("HOOD_ON", Commands.runOnce(() -> HoodOK = true));
+        NamedCommands.registerCommand("HOOD_OFF", new SequentialCommandGroup(
+            Commands.runOnce(() -> HoodOK = false),
+            Commands.runOnce(() -> mHood.end()),
+            Commands.runOnce(() -> mHood.cancel())));
+
+        NamedCommands.registerCommand(
+            "HOOD_AIN",
+            Commands.defer(() -> {
+                boolean red = DriverStation.getAlliance().orElse(DriverStation.Alliance.Blue)
+                    == DriverStation.Alliance.Red;
+
+                double targetX = red ? 11.914 : 4.624;
+                double targetY = 4.044;
+
+            return drivetrain.alignToTargetCommand(targetX, targetY);
+            }, java.util.Set.of(drivetrain))
+        );
+
+        // NamedCommands.registerCommand("HOOD_ON", new InstantCommand(()-> drivetrain.stop), null)new Hood(drivetrain));
+        // new EventTrigger("HOOD_OFF").onTrue(new SequentialCommandGroup(
+        //     Commands.runOnce(() -> mHood.end()),
+        //     Commands.runOnce(() -> mHood.cancel())));
 
         // // Configuração do autochooser e definição das opções de auto
         // autoChooser = new SendableChooser<>();
         // autoChooser.setDefaultOption("TRENCH RIGHT", AutoBuilder.buildAuto("TrenchRight"));
 
-        // new EventTrigger("CLIMBER_UP").onTrue(Commands.runOnce(() -> mClimber.setPosition(-350, 1)));
+        new EventTrigger("SET_SHOTTER").onTrue(Commands.runOnce(() -> mHood.setShooterRPM(3000)));
+        new EventTrigger("INTAKE_ON").onTrue(Commands.runOnce(() -> intakectn=1));
+        new EventTrigger("INTAKE_AUX").onTrue(Commands.runOnce(() -> intakectn=1));
+        new EventTrigger("CLIMBER_DOWN").onTrue(Commands.runOnce(() -> mClimber.setPosition(drivetrain.getPose(), 0, 1)));
         // new EventTrigger("CLIMBER_PUSH").onTrue(Commands.runOnce(() -> mClimber.setPosition(0, 1)));
+
+        // activateCommandOnCondition(()-> Hood.getIndexando() && driver.getRightBumperButton(),
+        //     new SequentialCommandGroup(
+        //     Commands.runOnce(() -> Intake.setArticulated(0.0035, 0, 0.2)),
+        //     Commands.runOnce(() -> mIntake.setIntakeRPM(2500))));
+
+        // activateCommandOnCondition(()-> Intake.getArticulatedPosition() > 6 && Intake.getArticulatedPosition() < 8 && climberMove == 1, new SequentialCommandGroup(
+        //     // Commands.runOnce(() -> mClimber.setPosition(drivetrain.getPose(), 0, 1)),
+        //     Commands.runOnce(() -> climberMove = 0)));
 
         autoChooser = AutoBuilder.buildAutoChooser();
         SmartDashboard.putData("Auto", autoChooser);
@@ -91,21 +141,15 @@ public class RobotContainer {
             .withRotationalRate(drivetrain.getOmegaCmd() * MaxSpeed);
         }));
 
-        Cmdriver.start().onTrue(Commands.sequence(
-            drivetrain.runOnce(() -> drivetrain.configAngleInit()),
-            Commands.waitSeconds(0.1),
-            drivetrain.runOnce(() -> {
-                // headingPid.reset();
-                // drivetrain.isHeadingLocked = false;
-            })));
+        Cmdriver.start().onTrue(drivetrain.runOnce(() -> drivetrain.configAngleInit()));
 
-        whileCommandOnCondition(()-> Hood.getAligned(), drivetrain.brakeX());
+        whileCommandOnCondition(()-> Hood.getAligned() && Hood.getIndexando() && driver.getRightBumperButton(), drivetrain.brakeX()); 
 
         /********** INTAKE **********/
         activateCommandOnCondition(() -> driver.getLeftBumperButton(), new InstantCommand(() -> intakectn++));
 
         activateCommandOnCondition(() -> intakectn == 1, new SequentialCommandGroup(
-            Commands.runOnce(() -> mIntake.setIntakeRPM(6000)), //////
+            Commands.runOnce(() -> mIntake.setIntakeRPM(3500)),
             Commands.runOnce(() -> Intake.setArticulated(0.1, 22.394, 0.5)),
             Commands.runOnce(() -> mClimber.setPosition(drivetrain.getPose(), 110, 1))));
 
@@ -113,38 +157,35 @@ public class RobotContainer {
             Commands.runOnce(() -> mIntake.setIntakeRPM(0)),
             new InstantCommand(() -> intakectn = 0)));
 
-        /* Ajuda indexer */
-        activateCommandOnCondition(()-> Hood.getIndexando() && driver.getRightBumperButton(),
+        activateCommandOnCondition(()-> driver.getAButton() && Intake.getArticulatedPosition() > 19 ,new SequentialCommandGroup(
+            Commands.runOnce(() -> mIntake.setIntakeRPM(-3500)),
+            Commands.runOnce(() -> mHood.setBeltRPM(-4000)),
+            Commands.runOnce(() -> mHood.setIndexRPM(-3000))));
+        
+        Cmdriver.a().onFalse(new SequentialCommandGroup(
+            Commands.runOnce(() -> mIntake.setIntakeRPM(0)),
+            Commands.runOnce(() -> mHood.setBeltRPM(0)),
+            Commands.runOnce(() -> mHood.setIndexRPM(0))));
+
+        /** AUXILIO INDEXER ***************/
+        activateCommandOnCondition(()-> Hood.getIndexando() && driver.getRightBumperButton() && driver.getXButton(),
             new SequentialCommandGroup(
-            Commands.runOnce(() -> Intake.setArticulated(0.015, 6, 0.1)),
+            Commands.runOnce(() -> Intake.setArticulated(0.015, 0, 0.1)),
             Commands.runOnce(() -> mIntake.setIntakeRPM(2500))));
 
-        activateCommandOnCondition(()-> Intake.getArticulatedPosition() > 6 && Intake.getArticulatedPosition() < 8 && climberMove == 1, new SequentialCommandGroup(
+        activateCommandOnCondition(()-> Intake.getArticulatedPosition() > 2 && Intake.getArticulatedPosition() < 8 && climberMove == 1, new SequentialCommandGroup(
             Commands.runOnce(() -> mClimber.setPosition(drivetrain.getPose(), 0, 1)),
             Commands.runOnce(() -> climberMove = 0)));
 
-        activateCommandOnCondition(()-> Climber.getPosition() < 20 && Hood.getIndexando() && driver.getRightBumperButton(), 
-        Commands.runOnce(() -> Intake.setArticulated(0.015, 0, 0.1)));
+        // activateCommandOnCondition(()-> Climber.getPosition() < 20 && Hood.getIndexando() && driver.getRightBumperButton() && driver.getXButton(), 
+        // Commands.runOnce(() -> Intake.setArticulated(0.015, 0, 0.1)));
+        
+        Cmdriver.x().onFalse(new SequentialCommandGroup(
+            Commands.runOnce(() -> mIntake.setIntakeRPM(0)),
+            Commands.runOnce(() -> Intake.setArticulated(0.1, 22.394, 0.5)),
+            Commands.runOnce(() -> intakectn = 0)));
 
-
-        // Cmdriver.back().onTrue(Commands.runOnce(() -> mHood.setIndexRPM(150)));
-
-
-        /*PUNHETADA*/
-        // activateCommandOnCondition(() -> mHood.getarticulaAux(), new SequentialCommandGroup(
-        //     new InstantCommand(() -> Intake.setArticulated(0.1, 10, 0.5)),
-        //     Commands.runOnce(() -> mIntake.setIntakeRPM(5000))));
-
-        // activateCommandOnCondition(() -> !mHood.getarticulaAux(), new SequentialCommandGroup(
-        //     new InstantCommand(() -> Intake.setArticulated(0.05, 22.394, 0.5)),
-        //     Commands.runOnce(() -> mIntake.setIntakeRPM(5000))));
-        /* */
-
-        // activateCommandOnCondition(() -> mHood.getarticulaAux(),
-        //         new InstantCommand(() -> mSubSystemSIM.setSubClimber(0, 1, 0, 100)));
-
-        // /********** HOOD **************************/
-        Cmdriver.rightBumper().whileTrue(mHood.repeatedly());
+        /** HOOD **************************/
         Cmdriver.rightBumper().onTrue(Commands.runOnce(() -> climberMove = 1));
         
         Cmdriver.rightBumper().onFalse(new SequentialCommandGroup(
@@ -152,8 +193,28 @@ public class RobotContainer {
             Commands.runOnce(() -> mIntake.setIntakeRPM(0)),
             Commands.runOnce(() -> Intake.setArticulated(0.1, 22.394, 0.5)),
             Commands.runOnce(() -> intakectn = 0)));
+
+        // whileCommandOnCondition(()-> HoodOK, mHood.repeatedly());
+
+        activateCommandOnCondition(() -> mHood.isFinished(),  Commands.runOnce(() -> HoodOK = false));
+
+        Cmdriver.rightBumper().whileTrue(createHoodCommand());
+
+        /*****    AUTONOMO  *****/
+        whileCommandOnCondition(() -> HoodOK, createHoodCommand());
+
+        whileCommandOnCondition(() -> HoodOK && Hood.getIndexando(), new SequentialCommandGroup(
+            Commands.runOnce(() -> Intake.setArticulated(0.0035, 0, 0.2)),
+            Commands.runOnce(() -> mIntake.setIntakeRPM(2500))));
         
-        /* CLIMBER */
+        activateCommandOnCondition(()-> !HoodOK, new SequentialCommandGroup(
+            Commands.runOnce(() -> mHood.end()),
+            Commands.runOnce(() -> mIntake.setIntakeRPM(0)),
+            Commands.runOnce(() -> Intake.setArticulated(0.1, 22.394, 0.5)),
+            Commands.runOnce(() -> intakectn = 0)));
+        /*****    AUTONOMO  *****/
+
+        /** CLIMBER ***********************/
         Cmdriver.povUp().onTrue(Commands.runOnce(() -> mClimber.setPosition(drivetrain.getPose(), 110, 1)));
         Cmdriver.povDown().onTrue(Commands.runOnce(() -> mClimber.setPosition(drivetrain.getPose(), 0, 1)));
 
@@ -182,14 +243,54 @@ public class RobotContainer {
         Cmdriver.povUp().onTrue(Commands.runOnce(() -> mSim.setSubClimber(drivetrain.getPose(), 110, 5)));
         Cmdriver.povDown().onTrue(Commands.runOnce(() -> mSim.setSubClimber(drivetrain.getPose(), 0, 5)));
         
+
+
+        /* PUNHETADA POR POSIÇÃO Ajuda indexer */
+        // activateCommandOnCondition(()-> Hood.getIndexando() && driver.getRightBumperButton(),
+        //     new SequentialCommandGroup(
+        //     Commands.runOnce(() -> Intake.setArticulated(0.0035, 0, 0.2)),
+        //     Commands.runOnce(() -> mIntake.setIntakeRPM(2500))));
+
+        // activateCommandOnCondition(()-> Intake.getArticulatedPosition() > 6 && Intake.getArticulatedPosition() < 8 && climberMove == 1, new SequentialCommandGroup(
+        //     // Commands.runOnce(() -> mClimber.setPosition(drivetrain.getPose(), 0, 1)),
+        //     Commands.runOnce(() -> climberMove = 0)));
+
+        // activateCommandOnCondition(()-> Climber.getPosition() < 20 && Hood.getIndexando() && driver.getRightBumperButton(), 
+        // Commands.runOnce(() -> Intake.setArticulated(0.015, 0, 0.1)));
+
+
+        /*PUNHETADA POR TEMPO*/
+        // activateCommandOnCondition(() -> mHood.getarticulaAux(), new SequentialCommandGroup(
+        //     new InstantCommand(() -> Intake.setArticulated(0.1, 10, 0.5)),
+        //     Commands.runOnce(() -> mIntake.setIntakeRPM(5000))));
+
+        // activateCommandOnCondition(() -> !mHood.getarticulaAux(), new SequentialCommandGroup(
+        //     new InstantCommand(() -> Intake.setArticulated(0.05, 22.394, 0.5)),
+        //     Commands.runOnce(() -> mIntake.setIntakeRPM(5000))));
+        /* */
+
+        // activateCommandOnCondition(() -> mHood.getarticulaAux(),
+        //         new InstantCommand(() -> mSubSystemSIM.setSubClimber(0, 1, 0, 100)));
+
+
     }
 
     public Command getAutonomousCommand() {
-        // Primeiro o robô reseta o giroscópio de forma segura e DEPOIS lê a trajetória
-        // que irá realizar
         return Commands.sequence(
-                // prepararInicioDePartidaCommand(),
+                drivetrain.runOnce(() -> drivetrain.configAngleInit()),
                 autoChooser.getSelected());
+    }
+
+    private Command createHoodCommand() {
+        return Commands.defer(() -> new Hood(), java.util.Set.of());
+    }
+
+    public void configInit(){
+        drivetrain.configAngleInit();
+    }
+
+    public boolean getHoodOK(){
+        return HoodOK;
     }
 
     private void activateCommandOnCondition(BooleanSupplier condition, Command command) {
@@ -198,6 +299,10 @@ public class RobotContainer {
 
     private void whileCommandOnCondition(BooleanSupplier condition, Command command) {
         new Trigger(condition).whileTrue(command);
+    }
+
+    public void setshotOk(boolean shotOk){
+        drivetrain.shotOk = shotOk;
     }
 
 }

@@ -3,6 +3,8 @@ package frc.robot.subsystems;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.littletonrobotics.junction.Logger;
+
 import com.ctre.phoenix6.configs.TalonFXConfiguration;
 import com.ctre.phoenix6.configs.TalonFXSConfiguration;
 import com.ctre.phoenix6.controls.PositionDutyCycle;
@@ -11,26 +13,21 @@ import com.ctre.phoenix6.hardware.TalonFX;
 import com.ctre.phoenix6.hardware.TalonFXS;
 import com.ctre.phoenix6.signals.InvertedValue;
 import com.ctre.phoenix6.signals.NeutralModeValue;
-import com.google.flatbuffers.Constants;
 
 import edu.wpi.first.math.MathUtil;
 import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.controller.SimpleMotorFeedforward;
-import edu.wpi.first.math.filter.SlewRateLimiter;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation2d;
-
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.smartdashboard.Field2d;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Robot;
-
-import org.littletonrobotics.junction.Logger;
 
 public class Hood extends Command {
     private static double startTime;
@@ -39,234 +36,237 @@ public class Hood extends Command {
     private boolean articulaAux = false;
     private boolean ctrAligned = true;
     private static boolean indexando = false;
-        
-        /* Shooter INIT */
-        public static final TalonFX mShooterR = new TalonFX(22);
-        public static final TalonFX mShooterL = new TalonFX(21);
-        public static final VelocityVoltage shooterControl = new VelocityVoltage(0).withSlot(0);
-        private double targetRPMShooter = 0.0;
-        /* Shooter END */
-        
-        /* Hood INIT */
-        public static TalonFXS mHood = new TalonFXS(23);
-        public static PositionDutyCycle pidCtrHood = new PositionDutyCycle(0);
-        /* Hood END */
-        
-        /* Index INIT */
-        public static TalonFX mFeed = new TalonFX(19);
-        public static TalonFX mIndex = new TalonFX(20);
-        public static final VelocityVoltage indexControl = new VelocityVoltage(0).withSlot(0);
-        private double targetRPMIndex = 0.0;
-        private double targetRPMFeeder = 0.0;
-        /* Index END */
-        
-        /* Belt INIT */
-        public static TalonFX mBelt = new TalonFX(18);
-        public static final VelocityVoltage beltControl = new VelocityVoltage(0).withSlot(0);
-        private double targetRPMBelt = 0.0;
-        /* Belt END */
-        
-        public static double OmegaCmd = 0;
-        public static double angleTurretSim = 0;
-        public static double poseHood = 0, poseHoodSim = 0;
-        private boolean ctrSlewRate = false;
-        
-        public double tHigh = 5, tLow = 2, tArticula = 10;
-        private boolean RPMShooterOK = false;
-    
-        //private final SlewRateLimiter shooterLimiter = new SlewRateLimiter(50); // RPS/s
-
-        private final PIDController headindAin = new PIDController(1.0, 0.0, 0.0);
+    private static boolean alingOk = false;
             
-        private final class kPHeading{
-            private final static double Carpete = 1.55;
-            private final static double Liso = 0.75;
-            private final static double SIM = 1;
+    /* Shooter INIT */
+    public static final TalonFX mShooterR = new TalonFX(22);
+    public static final TalonFX mShooterL = new TalonFX(21);
+    public static final VelocityVoltage shooterControl = new VelocityVoltage(0).withSlot(0);
+    private double targetRPMShooter = 0.0;
+    /* Shooter END */
+    
+    /* Hood INIT */
+    public static TalonFXS mHood = new TalonFXS(23);
+    public static PositionDutyCycle pidCtrHood = new PositionDutyCycle(0);
+    /* Hood END */
+    
+    /* Index INIT */
+    public static TalonFX mFeed = new TalonFX(19);
+    public static TalonFX mIndex = new TalonFX(20);
+    public static final VelocityVoltage indexControl = new VelocityVoltage(0).withSlot(0);
+    private double targetRPMIndex = 0.0;
+    private double targetRPMFeeder = 0.0;
+    /* Index END */
+    
+    /* Belt INIT */
+    public static TalonFX mBelt = new TalonFX(18);
+    public static final VelocityVoltage beltControl = new VelocityVoltage(0).withSlot(0);
+    private double targetRPMBelt = 0.0;
+    /* Belt END */
+    
+    public static double OmegaCmd = 0;
+    public static double angleTurretSim = 0;
+    public static double poseHood = 0, poseHoodSim = 0;
+    public double tHigh = 5, tLow = 2, tArticula = 10;
+    private boolean RPMShooterOK = false;
+    private final class Interpolation{
+        private final static double[] distances = {1.2, 1.6, 2.0, 2.4, 2.8, 3.2, 3.6, 4, 4.4, 4.8, 5.2, 5.6};
+        private final static double[] RPM = {3200, 3400, 3950, 4100, 4150, 4200, 4250, 4300, 4375, 4500, 4700, 4950};
+    }
+    PIDController headingPID = new PIDController(0.025, 0.0, 0.001);
+    private boolean ctrTimer = true;
+    private Field2d field = new Field2d();
+    private static Pose2d robotPose;
+    // private final CommandSwerveDrivetrain swerve;
+
+    public Hood() {
+        // this.swerve = swerve;
+        configHood(0.75, -0.1, 0.45);
+        configIndex(NeutralModeValue.Coast);
+        configShooter(0.435, NeutralModeValue.Coast);
+        configBelt(0.1, -0.1, 0.1);
+        headingPID.enableContinuousInput(-180, 180);
+        headingPID.setTolerance(0.5);
+    }
+
+    public void execute() {
+        double blueX = 4.298;   // Aliança
+        double redX = 12.41;    // Aliança
+
+        double targetX = 0;
+        double targetY = 0;
+        double targetZ = 0;
+
+        double RPMShooter = 0, RPMBelt = 0, RPMIndex = 0;
+
+        // Pose2d robotPose = swerve.getPose();
+
+        double[] velocityShooter = getShooterVelocity();
+        double[] velocityIndex = getIndexVelocity();
+
+        /*  Ajuste de target em função da arena - INIT */
+        if((!isRedAlliance() && robotPose.getX() <= blueX) || (isRedAlliance() && robotPose.getX() >= redX)){
+            targetX = isRedAlliance() ? 11.914 : 4.624;
+            targetY = 4.044;
+            targetZ = 1.63;//1.63
         }
+        else if((!isRedAlliance() && robotPose.getX() > blueX + 1.4) || (isRedAlliance() && robotPose.getX() < redX - 1.4)){
+            if((robotPose.getY() - 4.044) >= 0) targetY = 6;
+            else targetY = 1.829;
+            targetX = isRedAlliance() ? 14.32 : 2.331;
+            targetZ = 0.5;
+        }
+        else{
+            if((robotPose.getY() - 4.044) >= 0) targetY = 6;
+            else targetY = 1.829;
+            targetX = isRedAlliance() ? 14.32 : 2.331;
+            targetZ = 0.5;
+        }
+        /*  Ajuste de target em função da arena - END */
         
-        double[] distances = {1.15, 1.42, 1.82, 2.15, 2.44, 2.83, 3.32, 3.54, 4, 4.45, 4.97};
-        double[] RPM = {3300, 3600, 3600, 3750, 3800, 3900, 4200, 4600, 4775, 4925, 5100};
-    
-        private final CommandSwerveDrivetrain swerve;
-    
-        public Field2d field = new Field2d();
-    
-        public Hood(CommandSwerveDrivetrain swerve) {
-            this.swerve = swerve;
-            configHood(0.75, -0.1, 0.45);
-            configIndex(NeutralModeValue.Coast);
-            configShooter(0.435, NeutralModeValue.Coast);
-            configBelt(0.1, -0.1, 0.1);
+        double distanceHood = hoodAling(targetX, targetY);
+        if((robotPose.getX() >= blueX-0.2 && robotPose.getX() <= (blueX-0.2)+1.2) || (robotPose.getX() >= (redX+0.2) - 1.2 && robotPose.getX() <= redX+0.2)){
+            poseHoodSim = -70;
+            poseHood = 0;
+            RPMShooter = 0;
+            RPMIndex = 0;
+            RPMBelt = 0;
         }
-    
-        public void execute() {
+        else{
+            poseHoodSim = map(parabola(distanceHood, distanceHood < 3.45 ? 0.6 : 1, targetX, targetY, targetZ), 40, 80, -110, -70);
+            poseHood = map(parabola(distanceHood, 1.35, targetX, targetY, targetZ), 82, 40.1, 0.0, 1.85);
+            RPMShooter = MathUtil.clamp(interpolate(distanceHood, Interpolation.distances, Interpolation.RPM), 3200, 4950);
+        }
 
-            double blueX = 4.298;   // Aliança
-            double redX = 12.41;    // Aliança
-    
-            double targetX = 0;
-            double targetY = 0;
-            double targetZ = 0;
-    
-            double RPMShooter = 0, RPMBelt = 0, RPMIndex = 0;
-    
-            Pose2d robotPose = swerve.getPose();
-    
-            double[] velocityShooter = getShooterVelocity();
-            double[] velocityIndex = getIndexVelocity();
-    
-            /*  Ajuste de target em função da arena - INIT */
-            if((!isRedAlliance() && robotPose.getX() <= blueX) || (isRedAlliance() && robotPose.getX() >= redX)){
-                targetX = isRedAlliance() ? 11.914 : 4.624;
-                targetY = 4.044;
-                targetZ = 1.63;//1.63
-            }
-            else if((!isRedAlliance() && robotPose.getX() > blueX + 1.4) || (isRedAlliance() && robotPose.getX() < redX - 1.4)){
-                if((robotPose.getY() - 4.044) >= 0) targetY = 6;
-                else targetY = 1.829;
-                targetX = isRedAlliance() ? 14.32 : 2.331;
-                targetZ = 0.5;
-            }
-            else{
-                if((robotPose.getY() - 4.044) >= 0) targetY = 6;
-                else targetY = 1.829;
-                targetX = isRedAlliance() ? 14.32 : 2.331;
-                targetZ = 0.5;
-            }
-            /*  Ajuste de target em função da arena - END */
-            
-            double distanceHood = hoodAling(targetX, targetY);
+        setHoodPosition(poseHood);
+        setShooterRPM(RPMShooter);
 
-            if((robotPose.getX() >= blueX-0.2 && robotPose.getX() <= (blueX-0.2)+1.2) || (robotPose.getX() >= (redX+0.2) - 1.2 && robotPose.getX() <= redX+0.2)){
-                poseHoodSim = -70;
-                poseHood = 0;
-                RPMShooter = 0;
+        SubSystemSIM.setShooterVelocity(3.65);
+
+        RPMShooterOK = (Math.abs(targetRPMShooter - velocityShooter[0]) * 60) < 1000 ? true : false;
+        boolean RPMIndexOK = ((targetRPMIndex - velocityIndex[1]) * 60) < 1000 ? true : false;
+
+        if(aligned || alingOk){
+            if(ctrAligned) {
+                timerShot = Timer.getFPGATimestamp();
+                tArticula = Timer.getFPGATimestamp();
+                ctrAligned=false;
+            }
+
+            if (RPMShooterOK && errorTimer(timerShot) > 1) {
+                if(ctrTimer){
+                    startTime = Timer.getFPGATimestamp();
+                    ctrTimer = false;
+                }
+                RPMIndex = RPMShooter * 0.5;
+                RPMBelt = 6000;
+                indexando = true;
+            }
+            else {
                 RPMIndex = 0;
                 RPMBelt = 0;
-            }
-            else{
-                poseHoodSim = map(parabola(distanceHood, distanceHood < 3.45 ? 0.6 : 1, targetX, targetY, targetZ), 40, 80, -110, -70);
-                
-                poseHood = map(parabola(Robot.auxiliar.getDouble(0), Robot.setHmax.getDouble(1.5), targetX, targetY, targetZ), 79.5, 40.1, 0.0, 1.85);
-                
-                //poseHood = map(parabola(distanceHood, distanceHood < 3.45 ? 0.6 : 1, targetX, targetY, targetZ), 79.5, 40.1, 0, 1.85);
-                // RPMShooter = interpolate(distanceHood, distances, RPM);
-                RPMShooter = Robot.RPMShooter.getDouble(0);
+                indexando = false;
             }
 
-            Logger.recordOutput("HOOD/Ain/AngleParabola", parabola(Robot.auxiliar.getDouble(0), Robot.setHmax.getDouble(1.5), targetX, targetY, targetZ));
-    
-            setHoodPosition(poseHood);
-            //setShooterRPM(RPMShooter);
-            setShooterRPM(RPMShooter);
-    
-            SubSystemSIM.setShooterVelocity(3.65);
-    
-            RPMShooterOK = (Math.abs(targetRPMShooter - velocityShooter[0]) * 60) < 1000 ? true : false;
-            boolean RPMIndexOK = ((targetRPMIndex - velocityIndex[1]) * 60) < 1000 ? true : false;
-    
-            if(aligned){
-                if(ctrAligned) {
-                    timerShot = Timer.getFPGATimestamp();
-                    tArticula = Timer.getFPGATimestamp();
-                    ctrAligned=false;
-                }
-    
-                if (RPMShooterOK && errorTimer(timerShot) > 0.5) {
-                    RPMIndex = RPMShooter * 1.1;
-                    // RPMIndex = (RPMShooter / 2) - 50; //Colocar valor para Indexar
-                    RPMBelt = 6000;
-                    indexando = true;
-                }
-                else {
-                    RPMIndex = 0;
-                    RPMBelt = 0;
-                    indexando = false;
-                }
-    
-                tHigh = 2;
-                tLow = 1;
-                if(errorTimer(tArticula) < tHigh) articulaAux = false;
-                else if(errorTimer(tArticula) >= tHigh && errorTimer(tArticula) < tHigh + tLow) articulaAux = true;
-                else tArticula = Timer.getFPGATimestamp();
-            }
-            else{
-                RPMIndex = 0;
-                RPMBelt = 0;
-                articulaAux = false;
-            }
-    
-            setIndexer(RPMIndex, RPMBelt);
-    
-            if((targetRPMShooter - velocityShooter[0]) > 0.5){
-                startTime = Timer.getFPGATimestamp();
-            }
-    
-            Logger.recordOutput("HOOD/getArticular", getarticulaAux());
-            Logger.recordOutput("HOOD/TimerArticular", errorTimer(tArticula));
-    
-            Logger.recordOutput("HOOD/RPM/ShooterOK", RPMShooterOK);
-            Logger.recordOutput("HOOD/RPM/IndexOK", RPMIndexOK);
-            Logger.recordOutput("HOOD/RPM/SetIndex", RPMIndex);
-            Logger.recordOutput("HOOD/RPM/SetBelt", RPMBelt);
-    
-            Logger.recordOutput("HOOD/RPM/targetShooter", targetRPMShooter * 60);
-            Logger.recordOutput("HOOD/RPM/targetIndex", targetRPMIndex *60);
-            
-            Logger.recordOutput("HOOD/Ain/DistanceHUB", distanceHood);
-            Logger.recordOutput("HOOD/Ain/IntepolationRPM", interpolate(distanceHood, distances, RPM));
-            Logger.recordOutput("HOOD/Position", getHoodPositon());
-            Logger.recordOutput("HOOD/RPM/GetShotter1", getShooterVelocity()[0] * 60);
-            Logger.recordOutput("HOOD/RPM/GetShooter2", getShooterVelocity()[1] * 60);
-            Logger.recordOutput("HOOD/RPM/GetShooter1Acceleration", getShooteracceleration()[0]);
-            Logger.recordOutput("HOOD/RPM/GetShooter2Acceleration", getShooteracceleration()[1]);
-            
-            Logger.recordOutput("HOOD/RPM/GetFeeder", getIndexVelocity()[0] * 60);
-            Logger.recordOutput("HOOD/RPM/GetIndex", getIndexVelocity()[1] * 60);
-            Logger.recordOutput("HOOD/RPM/GetBelt", getBeltVelocity() * 60);
-            Logger.recordOutput("HOOD/Ain/Aligned", aligned);
-            
+            tHigh = 2;
+            tLow = 1;
+            if(errorTimer(tArticula) < tHigh) articulaAux = false;
+            else if(errorTimer(tArticula) >= tHigh && errorTimer(tArticula) < tHigh + tLow) articulaAux = true;
+            else tArticula = Timer.getFPGATimestamp();
         }
-    
-        public boolean isFinished() {
-            return Timer.getFPGATimestamp() - startTime > 1.25 ? true : false;
+        else{
+            RPMIndex = 0;
+            RPMBelt = 0;
+            articulaAux = false;
+            startTime = Timer.getFPGATimestamp();
         }
-    
-        public void end() {
-            setHoodPosition(0);
-            setShooterRPM(1500);
-            stopIndexSpeed();
-            stopBelt();
+
+        setIndexer(RPMIndex, RPMBelt);
+
+        // if(Math.abs(targetRPMShooter - velocityShooter[0] * 60) >= 250 || !indexando){
+        //     startTime = Timer.getFPGATimestamp();
+        // }
+
+        Logger.recordOutput("HOOD/getArticular", getarticulaAux());
+        Logger.recordOutput("HOOD/TimerArticular", errorTimer(tArticula));
+
+        Logger.recordOutput("HOOD/RPM/ShooterOK", RPMShooterOK);
+        Logger.recordOutput("HOOD/RPM/IndexOK", RPMIndexOK);
+        Logger.recordOutput("HOOD/RPM/SetIndex", RPMIndex);
+        Logger.recordOutput("HOOD/RPM/SetBelt", RPMBelt);
+
+        Logger.recordOutput("HOOD/RPM/targetShooter", targetRPMShooter * 60);
+        Logger.recordOutput("HOOD/RPM/targetIndex", targetRPMIndex *60);
+        Logger.recordOutput("HOOD/Ain/SIMAngleParabola", parabola(Robot.auxiliar.getDouble(0), Robot.setHmax.getDouble(1), targetX, targetY, targetZ));
+        Logger.recordOutput("HOOD/Ain/AngleParabola", parabola(distanceHood, 1.35, targetX, targetY, targetZ));
         
-            SubSystemSIM.setShooterVelocity(0);
-            aligned=false;
-            articulaAux=false;
-            ctrAligned=true;
-            indexando = false;
-            ctrSlewRate = true;
+        Logger.recordOutput("HOOD/Ain/DistanceHUB", distanceHood);
+        Logger.recordOutput("HOOD/Ain/IntepolationRPM", interpolate(distanceHood, Interpolation.distances, Interpolation.RPM));
+        Logger.recordOutput("HOOD/Position", getHoodPositon());
+        Logger.recordOutput("HOOD/RPM/GetShotter1", getShooterVelocity()[0] * 60);
+        Logger.recordOutput("HOOD/RPM/GetShooter2", getShooterVelocity()[1] * 60);
+        Logger.recordOutput("HOOD/RPM/GetShooter1Acceleration", getShooteracceleration()[0]);
+        Logger.recordOutput("HOOD/RPM/GetShooter2Acceleration", getShooteracceleration()[1]);
+                
+                Logger.recordOutput("HOOD/RPM/GetFeeder", getIndexVelocity()[0] * 60);
+                Logger.recordOutput("HOOD/RPM/GetIndex", getIndexVelocity()[1] * 60);
+                Logger.recordOutput("HOOD/RPM/GetBelt", getBeltVelocity() * 60);
+                Logger.recordOutput("HOOD/Ain/Aligned", aligned);
+                Logger.recordOutput("FINISH", false);
+            }
+
+    public boolean isFinished() {
+        return errorTimer(startTime) > 10 && indexando ? true : false;
+        // return false;
+    }
+    
+    public static boolean isEnd() {
+        return errorTimer(startTime) > 10 && indexando ? true : false;
+    }
         
-            Logger.recordOutput("HOOD/Aligned", aligned);
-        }
-        
-        /**
-        * @return true se o intake puder articular para ajudar no disparo.
-        */
-        public boolean getarticulaAux(){
-            return articulaAux && Intake.getArticulatedPosition() > 9;
-        }
+    public void end() {
+        setHoodPosition(0);
+        setShooterRPM(1500);
+        stopIndexSpeed();
+        stopBelt();
     
-        /**
-         * @return o erro do tempo atual em relação ao tempo alvo.
-         */
-        private double errorTimer(double tTarget){
-            return Timer.getFPGATimestamp() - tTarget;
-        }
+        SubSystemSIM.setShooterVelocity(0);
+        aligned=false;
+        articulaAux=false;
+        ctrAligned=true;
+        indexando = false;
+        ctrTimer = true;
     
-        public static boolean getAligned(){
-                return aligned;
-        }
+        Logger.recordOutput("HOOD/Ain/Aligned", aligned);
+    }
     
-        public static boolean getIndexando(){
+    public static void setRobotPose(Pose2d setPose){
+        robotPose = setPose;
+    }
+    
+    public static void getAlingAuto(boolean aling){
+                alingOk = aling;
+        }
+
+    /**
+    * @return true se o intake puder articular para ajudar no disparo.
+    */
+    public boolean getarticulaAux(){
+        return articulaAux && Intake.getArticulatedPosition() > 9;
+    }
+
+    /**
+     * @return o erro do tempo atual em relação ao tempo alvo.
+     */
+    private static double errorTimer(double tTarget){
+        return Timer.getFPGATimestamp() - tTarget;
+    }
+
+    public static boolean getAligned(){
+            return aligned;
+    }
+
+    public static boolean getIndexando(){
             return indexando;
     }
 
@@ -312,7 +312,8 @@ public class Hood extends Command {
     * @param maxH Alura maxima do Fuel durante a trajetória.
     */
     public double parabola (double distHoodToHUB, double hChange, double Target_X, double Target_Y, double Target_Z) {
-        Pose2d robot_getValues = swerve.getPose();
+        // Pose2d robot_getValues = swerve.getPose();
+        Pose2d robot_getValues = robotPose;
         Translation2d robot_pose = robot_getValues.getTranslation();
         Translation2d pose_Target = new Translation2d(Target_X , Target_Y);
         Translation2d offsetHood = new Translation2d(0.19719, 0);
@@ -341,8 +342,8 @@ public class Hood extends Command {
             targetH     // altura do alvo
         );
 
-        Logger.recordOutput("ShotTrajectory", traj);
-        Logger.recordOutput("Parabola", Math.toDegrees(Math.atan(tan_angle_T)));
+        Logger.recordOutput("Parabola/ShotTrajectory", traj);
+        Logger.recordOutput("Parabola/Angle", Math.toDegrees(Math.atan(tan_angle_T)));
 
         return Math.toDegrees(Math.atan(tan_angle_T));
     }
@@ -385,7 +386,8 @@ public class Hood extends Command {
     * @param Target_Y Posição Y do alvo a ser atingido.
     */
     private double hoodAling (double Target_X, double Target_Y){
-        Pose2d robot_getValues = swerve.getPose();
+        // Pose2d robot_getValues = swerve.getPose();
+        Pose2d robot_getValues = robotPose;
         Rotation2d Robot_Yaw = robot_getValues.getRotation();
         Translation2d robot_pose = robot_getValues.getTranslation();
 
@@ -400,31 +402,28 @@ public class Hood extends Command {
         // Translation2d angleHub = pose_Target.minus(robot_pose);
         // Rotation2d targetAngleRobot = angleHub.getAngle();
 
-        double error = MathUtil.angleModulus(targetAngleHood.minus(Robot_Yaw).getRadians());
-        double kP = kPHeading.Liso;
-        OmegaCmd = kP * error;
+        // Rotation2d yawAlliance = isRedAlliance() ? new Rotation2d(Math.PI) : new Rotation2d(0);
+        // yawAlliance = new Rotation2d(MathUtil.inputModulus(Robot_Yaw.plus(yawAlliance).getRadians(), -Math.PI, Math.PI));
 
-        OmegaCmd = MathUtil.clamp(OmegaCmd, -3, 3);
+        // double error = MathUtil.angleModulus(targetAngleHood.minus(Robot_Yaw).getRadians());
+        // double kP = kPHeading.Carpete;
+        // OmegaCmd = kP * error;
 
-        // OmegaCmd = headindAin.calculate(MathUtil.angleModulus(targetAngleHood.minus(Robot_Yaw).getRadians()));
+        OmegaCmd = headingPID.calculate(Robot_Yaw.getDegrees(), targetAngleHood.getDegrees());
 
-        OmegaCmd = MathUtil.clamp(OmegaCmd, -3, 3);
-        aligned = Math.abs(error) < Math.toRadians(6.5);
+        OmegaCmd = MathUtil.clamp(OmegaCmd, -0.7, 0.7);
+        aligned = Math.abs(headingPID.getError()) < 4;
 
-        // Logger.recordOutput("Aling/error", error);
-        Logger.recordOutput("Aling/Heading", swerve.getHeading());
-
+        // Logger.recordOutput("AIN/Heading", swerve.getHeading());
         Logger.recordOutput("ROBOT/Hood", new double[] {poseHood.getX(), poseHood.getY(), Robot_Yaw.getRadians()});
         Logger.recordOutput("ROBOT/OdometryRobot", new double[] {robot_pose.getX(), robot_pose.getY(), Robot_Yaw.getRadians()});
         Logger.recordOutput("FIELD/Target", new double[] {Target_X, Target_Y, Math.toRadians(0)});
         
-        Pose2d robot = new Pose2d(swerve.getPose().getX(), swerve.getPose().getY(), new Rotation2d(swerve.getPose().getRotation().getRadians()));
-        Pose2d target = new Pose2d(Target_X, Target_Y, new Rotation2d(0));
+        // Pose2d robot = new Pose2d(swerve.getPose().getX(), swerve.getPose().getY(), new Rotation2d(swerve.getPose().getRotation().getRadians()));
 
-        SmartDashboard.putData("FIELD", field);
-        field.getObject("Robot").setPose(robot);
-        Logger.recordOutput("Robo/Odometry", robot);
-        Logger.recordOutput("Turret/Target", target);
+        // SmartDashboard.putData("FIELD", field);
+        // field.getObject("Robot").setPose(robot);
+
 
         return distanceHood;
     }
@@ -444,18 +443,18 @@ public class Hood extends Command {
     * @param ys Valor ys (RPM para acertar o HUB).
     */
     public double interpolate(double x, double[] xs, double[] ys) {
-    for(int i=0;i<xs.length-1;i++){
-        if(x >= xs[i] && x <= xs[i+1]){
+        for(int i=0;i<xs.length-1;i++){
+            if(x >= xs[i] && x <= xs[i+1]){
 
-            double ratio =
-                (x - xs[i]) /
-                (xs[i+1] - xs[i]);
+                double ratio =
+                    (x - xs[i]) /
+                    (xs[i+1] - xs[i]);
 
-            return ys[i] + ratio * (ys[i+1] - ys[i]);
+                return ys[i] + ratio * (ys[i+1] - ys[i]);
+            }
         }
+        return ys[ys.length-1];
     }
-    return ys[ys.length-1];
-}
 
     /**
     * @return Aliança da Drive Station
@@ -752,7 +751,7 @@ public class Hood extends Command {
     * @param setpointRPM Define o RPM do Indexer.
     */
     public void setIndexRPM(double setpointRPM){
-        setpointRPM = MathUtil.clamp(setpointRPM, 0, 6000);
+        setpointRPM = MathUtil.clamp(setpointRPM, -6000, 6000);
 
         this.targetRPMIndex = setpointRPM / 60.0;
         double kV = 0.15;
@@ -834,7 +833,7 @@ public class Hood extends Command {
     }
 
     public void setBeltRPM(double setpointRPM){
-        setpointRPM = MathUtil.clamp(setpointRPM, 0, 6000);
+        setpointRPM = MathUtil.clamp(setpointRPM, -6000, 6000);
 
         this.targetRPMBelt = setpointRPM / 60.0;
         double kV = 0.115;

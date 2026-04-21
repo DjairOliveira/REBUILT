@@ -15,10 +15,13 @@ import com.ctre.phoenix6.HootAutoReplay;
 import com.ctre.phoenix6.hardware.Pigeon2;
 
 import edu.wpi.first.math.geometry.Pose2d;
+import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.networktables.GenericEntry;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.shuffleboard.BuiltInWidgets;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.CommandScheduler;
 import frc.robot.subsystems.Climber;
@@ -28,32 +31,24 @@ import frc.robot.subsystems.Intake;
 public class Robot extends LoggedRobot {
     private Command m_autonomousCommand;
 
-  private RobotContainer m_robotContainer;
+    private RobotContainer m_robotContainer;
 
-  public static final Pigeon2 mPigeon2 = new Pigeon2(13);
+    public static final Pigeon2 mPigeon2 = new Pigeon2(13);
 
-  private double teleopStartTime = 0;
-  public static double elapsedTime = 0;
+    private double teleopStartTime = 0;
+    public static double elapsedTime = 0;
 
-  public static GenericEntry RPMShooter;
-  public static GenericEntry KVShooter;
-  public static GenericEntry setHmax;
+    public static GenericEntry RPMShooter;
+    public static GenericEntry KVShooter;
+    public static GenericEntry setHmax;
 
-  public static GenericEntry pipeline;
-  public static GenericEntry auxiliar;
-  public static GenericEntry auxiliar2;
-  public static GenericEntry Driver;
+    public static GenericEntry pipeline;
+    public static GenericEntry auxiliar;
+    public static GenericEntry auxiliar2;
+    public static GenericEntry auxiliar3;
+    public static GenericEntry Driver;
 
-   /* TEMOS PERGUNTAS */ //SetRobotOrientation 
-
-//   public static double[] pose = new double[3];
-
-//   private Hood mHood = new Hood();
-
-    /* log and replay timestamp and joystick data */
-    // private final HootAutoReplay m_timeAndJoystickReplay = new HootAutoReplay()
-    //     .withTimestampReplay()
-    //     .withJoystickReplay();
+    private Field2d field = new Field2d();
 
     public Robot() {
         m_robotContainer = new RobotContainer();
@@ -73,6 +68,9 @@ public class Robot extends LoggedRobot {
             .withWidget(BuiltInWidgets.kTextView).getEntry();
 
         auxiliar2 = Shuffleboard.getTab("CONFIG").add("Auxiliar2", 0)
+            .withWidget(BuiltInWidgets.kTextView).getEntry();
+
+        auxiliar3 = Shuffleboard.getTab("CONFIG").add("Auxiliar3", 0)
             .withWidget(BuiltInWidgets.kTextView).getEntry();
 
         pipeline = Shuffleboard.getTab("CONFIG").add("setPipeline", 0)
@@ -95,41 +93,20 @@ public class Robot extends LoggedRobot {
         m_robotContainer.mHood.setZeroHood();
         m_robotContainer.mClimber.setZeroClimber();
 
+        
+        Pose2d robot = new Pose2d(2, 4, new Rotation2d(Math.PI));
+
+        SmartDashboard.putData("FIELD", field);
+        field.getObject("Robot").setPose(robot);
+
+        m_robotContainer.configInit();
     }
 
     @Override
     public void robotPeriodic() {
-        // m_timeAndJoystickReplay.update();
         CommandScheduler.getInstance().run();
 
         elapsedTime = Timer.getFPGATimestamp() - teleopStartTime;
-
-        // // Pose2d currentPose = m_robotContainer.drivetrain.getPose();
-
-        // // Rotation2d heading = currentPose.getRotation();
-        // // ChassisSpeeds fieldSpeeds = ChassisSpeeds.fromRobotRelativeSpeeds(m_robotContainer.drivetrain.getState().Speeds, heading);
-
-        // // double speedX = fieldSpeeds.vxMetersPerSecond;
-        // // double speedY = fieldSpeeds.vyMetersPerSecond;
-
-        // // if(m_robotContainer.mSubSystemSIM.getSubClimber() >= 30){
-        // //     if(currentPose.getX() >= 3.7 && currentPose.getX() <= 5.5){
-        // //         if((currentPose.getY() >= 0 && currentPose.getY() <= 1.4)){
-        // //             if((currentPose.getX() - 4.628) < 0 && speedX > 0.5 || (currentPose.getX() - 4.628) > 0 && speedX < -0.5) m_robotContainer.colisionProtect = 0.25; 
-        // //             if((currentPose.getX() - 4.628) < 0 && speedX < -0.5 || (currentPose.getX() - 4.628) > 0 && speedX > 0.5) m_robotContainer.colisionProtect = 1;
-        // //         }
-        // //         else if((currentPose.getY() >= 6.393 && currentPose.getY() <= 8.2)){
-        // //             if((currentPose.getX() - 4.628) < 0 && speedX > 0.5 || (currentPose.getX() - 4.628) > 0 && speedX < -0.5) m_robotContainer.colisionProtect = 0.25; 
-        // //             if((currentPose.getX() - 4.628) < 0 && speedX < -0.5 || (currentPose.getX() - 4.628) > 0 && speedX > 0.5) m_robotContainer.colisionProtect = 1;
-        // //         }
-        // //         else{
-        // //             m_robotContainer.colisionProtect = 1;
-        // //         }
-        // //     }
-        // // }
-        // // else{
-        // //     m_robotContainer.colisionProtect = 1;
-        // // }
 
         double speedHood[] = Hood.getShooterVelocity();
         double speed[] = Intake.getIntakeVelocity();
@@ -140,10 +117,18 @@ public class Robot extends LoggedRobot {
         Logger.recordOutput("INTAKE/Coletor1Speed", speed[0] * 60);
         Logger.recordOutput("INTAKE/Coletor2Speed", speed[1] * 60);
         Logger.recordOutput("INTAKE/Articulation", Intake.getArticulatedPosition());
-        Logger.recordOutput("Hood/Position", Hood.getHoodPositon());
-        Logger.recordOutput("Hood/Index", Hood.getIndexVelocity());
-        Logger.recordOutput("Hood/Shooter", Hood.getShooterVelocity());
+        Logger.recordOutput("HOOD/Position", Hood.getHoodPositon());
+        Logger.recordOutput("HOOD/Index", Hood.getIndexVelocity());
+        Logger.recordOutput("HOOD/Shooter", Hood.getShooterVelocity());
         Logger.recordOutput("Climber", Climber.getPosition());
+
+        Logger.recordOutput("HoodOK", m_robotContainer.getHoodOK());
+
+        Logger.recordOutput("INDEXANDO", Hood.getIndexando());
+        Logger.recordOutput("ALINHADO", Hood.getAligned());
+        Logger.recordOutput("isEnd", Hood.isEnd());
+        
+        
     }
 
     @Override
@@ -180,6 +165,8 @@ public class Robot extends LoggedRobot {
             CommandScheduler.getInstance().cancel(m_autonomousCommand);
         }
 
+        m_robotContainer.setshotOk(false);
+
         // Não pode executar durante a partida, 
         //m_robotContainer.prepararInicioDePartida();
         elapsedTime = 0;
@@ -194,6 +181,7 @@ public class Robot extends LoggedRobot {
     @Override
     public void testInit() {
         CommandScheduler.getInstance().cancelAll();
+
     }
 
     @Override
@@ -204,4 +192,6 @@ public class Robot extends LoggedRobot {
 
     @Override
     public void simulationPeriodic() {}
+
+    
 }
