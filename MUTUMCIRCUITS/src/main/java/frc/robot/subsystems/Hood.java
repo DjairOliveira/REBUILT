@@ -73,7 +73,8 @@ public class Hood extends Command {
         private final static double[] distances = {1.2, 1.6, 2.0, 2.4, 2.8, 3.2, 3.6, 4, 4.4, 4.8, 5.2, 5.6};
         private final static double[] RPM = {3200, 3400, 3950, 4100, 4150, 4200, 4250, 4300, 4375, 4500, 4700, 4950};
     }
-    PIDController headingPID = new PIDController(0.025, 0.0, 0.001);
+    // PIDController headingPID = new PIDController(0.025, 0.0, 0.001);
+    PIDController headingPID = new PIDController(0.032, 0.0, 0.001);
     private boolean ctrTimer = true;
     private Field2d field = new Field2d();
     private static Pose2d robotPose;

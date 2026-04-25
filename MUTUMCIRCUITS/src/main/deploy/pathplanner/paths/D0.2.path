@@ -3,29 +3,29 @@
   "waypoints": [
     {
       "anchor": {
-        "x": 2.807889212638544,
-        "y": 5.555150629882126
+        "x": 2.564051355206847,
+        "y": 6.53508529056242
       },
       "prevControl": null,
       "nextControl": {
-        "x": 2.8308321658377986,
-        "y": 7.3985063568292615
+        "x": 2.6980025416130435,
+        "y": 6.79972931992168
       },
       "isLocked": false,
-      "linkedName": "D0.1E"
+      "linkedName": "D0.1EE"
     },
     {
       "anchor": {
-        "x": 4.670343651530908,
-        "y": 7.494959150229639
+        "x": 4.646776727287735,
+        "y": 7.446923228192908
       },
       "prevControl": {
-        "x": 3.1721683309557767,
-        "y": 7.4702139800285305
+        "x": 3.738090643474774,
+        "y": 7.437433034106088
       },
       "nextControl": {
-        "x": 7.648968241453863,
-        "y": 7.544156711710332
+        "x": 7.968552018470422,
+        "y": 7.4816153983358085
       },
       "isLocked": false,
       "linkedName": null
@@ -78,8 +78,8 @@
   ],
   "rotationTargets": [
     {
-      "waypointRelativePos": 0.49335167354424425,
-      "rotationDegrees": 180.0
+      "waypointRelativePos": 0.6620816139385606,
+      "rotationDegrees": -160.99863425551746
     },
     {
       "waypointRelativePos": 1.219624025676287,
@@ -103,6 +103,19 @@
         "nominalVoltage": 12.0,
         "unlimited": false
       }
+    },
+    {
+      "name": "Constraints Zone",
+      "minWaypointRelativePos": 0.799552071668532,
+      "maxWaypointRelativePos": 1.4893617021276626,
+      "constraints": {
+        "maxVelocity": 4.0,
+        "maxAcceleration": 3.0,
+        "maxAngularVelocity": 540.0,
+        "maxAngularAcceleration": 720.0,
+        "nominalVoltage": 12.0,
+        "unlimited": false
+      }
     }
   ],
   "pointTowardsZones": [],
@@ -114,7 +127,7 @@
       "command": null
     },
     {
-      "name": "SHOT_OFF",
+      "name": "",
       "waypointRelativePos": 0,
       "endWaypointRelativePos": null,
       "command": null
@@ -127,7 +140,7 @@
     },
     {
       "name": "INTAKE_ON",
-      "waypointRelativePos": 1.330484330484334,
+      "waypointRelativePos": 1.2026875699887993,
       "endWaypointRelativePos": null,
       "command": null
     }
@@ -148,7 +161,7 @@
   "folder": "DEPOT",
   "idealStartingState": {
     "velocity": 0,
-    "rotation": -39.4600116360061
+    "rotation": -50.036044295238874
   },
   "useDefaultConstraints": false
 }

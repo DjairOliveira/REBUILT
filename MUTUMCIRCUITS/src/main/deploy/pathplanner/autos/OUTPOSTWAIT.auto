@@ -7,11 +7,17 @@
         {
           "type": "path",
           "data": {
-            "pathName": "AIN"
+            "pathName": "O1.0"
           }
         },
         {
-          "type": "parallel",
+          "type": "path",
+          "data": {
+            "pathName": "O1.1"
+          }
+        },
+        {
+          "type": "sequential",
           "data": {
             "commands": [
               {
@@ -23,10 +29,16 @@
               {
                 "type": "named",
                 "data": {
-                  "name": "HOOD_ON"
+                  "name": "HOOD_SHOOT"
                 }
               }
             ]
+          }
+        },
+        {
+          "type": "path",
+          "data": {
+            "pathName": "O1.2"
           }
         }
       ]

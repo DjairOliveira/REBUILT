@@ -11,7 +11,6 @@ import org.littletonrobotics.junction.Logger;
 import org.littletonrobotics.junction.networktables.NT4Publisher;
 import org.littletonrobotics.junction.wpilog.WPILOGWriter;
 
-import com.ctre.phoenix6.HootAutoReplay;
 import com.ctre.phoenix6.hardware.Pigeon2;
 
 import edu.wpi.first.math.geometry.Pose2d;
@@ -32,11 +31,9 @@ public class Robot extends LoggedRobot {
     private Command m_autonomousCommand;
 
     private RobotContainer m_robotContainer;
+    private double timerTeleOp = 0;
 
     public static final Pigeon2 mPigeon2 = new Pigeon2(13);
-
-    private double teleopStartTime = 0;
-    public static double elapsedTime = 0;
 
     public static GenericEntry RPMShooter;
     public static GenericEntry KVShooter;
@@ -52,9 +49,7 @@ public class Robot extends LoggedRobot {
 
     public Robot() {
         m_robotContainer = new RobotContainer();
-            
-        teleopStartTime = Timer.getFPGATimestamp();
-
+        
         RPMShooter = Shuffleboard.getTab("CONFIG").add("RPMShooter", 0)
         .withWidget(BuiltInWidgets.kNumberSlider)
         .withProperties(Map.of("min", 0, "max", 1, "orientation", "VERTICAL"))
@@ -106,7 +101,7 @@ public class Robot extends LoggedRobot {
     public void robotPeriodic() {
         CommandScheduler.getInstance().run();
 
-        elapsedTime = Timer.getFPGATimestamp() - teleopStartTime;
+        // elapsedTime = Timer.getFPGATimestamp() - teleopStartTime;
 
         double speedHood[] = Hood.getShooterVelocity();
         double speed[] = Intake.getIntakeVelocity();
@@ -122,12 +117,13 @@ public class Robot extends LoggedRobot {
         Logger.recordOutput("HOOD/Shooter", Hood.getShooterVelocity());
         Logger.recordOutput("Climber", Climber.getPosition());
 
-        Logger.recordOutput("HoodOK", m_robotContainer.getHoodOK());
+        // Logger.recordOutput("HoodOK", m_robotContainer.getHoodOK());
 
         Logger.recordOutput("INDEXANDO", Hood.getIndexando());
         Logger.recordOutput("ALINHADO", Hood.getAligned());
         Logger.recordOutput("isEnd", Hood.isEnd());
         
+        Logger.recordOutput("MaxSpeed", m_robotContainer.MaxSpeed);
         
     }
 
@@ -142,9 +138,6 @@ public class Robot extends LoggedRobot {
 
     @Override
     public void autonomousInit() {
-        
-        // Inicialização segura no período autônomo
-        // m_robotContainer.prepararInicioDePartida();
         
         m_autonomousCommand = m_robotContainer.getAutonomousCommand();
 
@@ -165,15 +158,14 @@ public class Robot extends LoggedRobot {
             CommandScheduler.getInstance().cancel(m_autonomousCommand);
         }
 
-        m_robotContainer.setshotOk(false);
-
-        // Não pode executar durante a partida, 
-        //m_robotContainer.prepararInicioDePartida();
-        elapsedTime = 0;
+        m_robotContainer.HoodOK = false;
+        timerTeleOp = Timer.getFPGATimestamp();
     }
 
     @Override
-    public void teleopPeriodic() {}
+    public void teleopPeriodic() {
+        m_robotContainer.elapsedTime = Timer.getFPGATimestamp() - timerTeleOp;
+    }
 
     @Override
     public void teleopExit() {}

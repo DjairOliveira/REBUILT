@@ -3,37 +3,44 @@
   "waypoints": [
     {
       "anchor": {
-        "x": 2.5548072289164105,
-        "y": 5.838072289159551
+        "x": 1.262113151063327,
+        "y": 2.5654696762860736
       },
       "prevControl": null,
       "nextControl": {
-        "x": 2.7269250063127797,
-        "y": 6.172963449469721
+        "x": 0.7261378485117611,
+        "y": 2.614904547260555
       },
       "isLocked": false,
-      "linkedName": "FimTL1"
+      "linkedName": "O1.1E"
     },
     {
       "anchor": {
-        "x": 1.9,
-        "y": 4.15
+        "x": 1.1474323452124722,
+        "y": 2.904544513742294
       },
       "prevControl": {
-        "x": 1.9553043842876117,
-        "y": 4.4072909333908745
+        "x": 0.6783553679121868,
+        "y": 2.8793071750109016
       },
       "nextControl": null,
       "isLocked": false,
-      "linkedName": "END OF TL2"
+      "linkedName": null
     }
   ],
   "rotationTargets": [],
   "constraintZones": [],
   "pointTowardsZones": [],
-  "eventMarkers": [],
+  "eventMarkers": [
+    {
+      "name": "CLIMBER_PUSH",
+      "waypointRelativePos": 1.0,
+      "endWaypointRelativePos": null,
+      "command": null
+    }
+  ],
   "globalConstraints": {
-    "maxVelocity": 3.0,
+    "maxVelocity": 0.25,
     "maxAcceleration": 3.0,
     "maxAngularVelocity": 540.0,
     "maxAngularAcceleration": 720.0,
@@ -42,13 +49,13 @@
   },
   "goalEndState": {
     "velocity": 0,
-    "rotation": 180.0
+    "rotation": 0.0
   },
   "reversed": false,
-  "folder": "TrenchLeft",
+  "folder": "OUTPOST",
   "idealStartingState": {
     "velocity": 0,
-    "rotation": 139.00780454237236
+    "rotation": 23.25367280178437
   },
-  "useDefaultConstraints": true
+  "useDefaultConstraints": false
 }

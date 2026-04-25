@@ -5,62 +5,50 @@
     "data": {
       "commands": [
         {
-          "type": "parallel",
+          "type": "path",
+          "data": {
+            "pathName": "O0.0"
+          }
+        },
+        {
+          "type": "sequential",
           "data": {
             "commands": [
               {
                 "type": "named",
                 "data": {
-                  "name": "LigarFlywheel"
+                  "name": "HOOD_AIN"
                 }
               },
               {
-                "type": "path",
+                "type": "named",
                 "data": {
-                  "pathName": "TrenchLeft"
+                  "name": "HOOD_SHOOT"
                 }
               }
             ]
           }
         },
         {
-          "type": "named",
-          "data": {
-            "name": "Atirar3.5Sec"
-          }
-        },
-        {
-          "type": "named",
-          "data": {
-            "name": "ZerarErroOdometria"
-          }
-        },
-        {
           "type": "path",
           "data": {
-            "pathName": "Trenchleft3"
+            "pathName": "O0.1"
           }
         },
         {
-          "type": "path",
-          "data": {
-            "pathName": "TrenchLeft2"
-          }
-        },
-        {
-          "type": "parallel",
+          "type": "sequential",
           "data": {
             "commands": [
               {
                 "type": "named",
                 "data": {
-                  "name": "ClimbSubir0"
+                  "name": "HOOD_AIN"
                 }
               },
               {
                 "type": "named",
                 "data": {
-                  "name": "AlinharRodas"
+                  "name": "HOOD_SHOOT"
                 }
               }
             ]

@@ -25,7 +25,6 @@ import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Notifier;
 import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.XboxController;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 
@@ -34,9 +33,7 @@ import com.pathplanner.lib.config.RobotConfig;
 import com.pathplanner.lib.config.PIDConstants;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 
-import frc.robot.Constants;
 import frc.robot.LimelightHelpers;
-import frc.robot.generated.TunerConstants;
 import frc.robot.generated.TunerConstants.TunerSwerveDrivetrain;
 
 public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Subsystem {
@@ -47,7 +44,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     String leftCAM  = "limelight-left";
     String rightCAM = "limelight-right";
 
-    PIDController headingPID = new PIDController(0.025, 0.0001, 0.001);
+    PIDController headingPID = new PIDController(0.032, 0.0001, 0.001);
 
     private double MaxAngularRate = Math.PI * 1.5; // ~4.7 rad/s
 
@@ -91,6 +88,11 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
 
     public Command applyRequest(Supplier<SwerveRequest> request) { return run(() -> this.setControl(request.get())); }
 
+
+    /**
+     * Ativa o alinhamento em X das rodas.
+     * @param null
+     */
     public Command brakeX() {
         return applyRequest(() -> brakeX);
     }
@@ -334,10 +336,6 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     }
 
     public Command alignToTargetCommand(double targetX, double targetY) {
-        PIDController alignPid = new PIDController(1.5, 0.0, 0.0);
-        alignPid.enableContinuousInput(-Math.PI, Math.PI);
-        alignPid.setTolerance(Math.toRadians(3));
-
         SwerveRequest.FieldCentric holdAndRotate = new SwerveRequest.FieldCentric()
             .withDriveRequestType(SwerveModule.DriveRequestType.OpenLoopVoltage);
 
@@ -346,25 +344,28 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             Translation2d robot = pose.getTranslation();
             Rotation2d heading = pose.getRotation();
 
-            Translation2d target = new Translation2d(targetX, targetY);
-            Rotation2d desiredAngle = target.minus(robot).getAngle();
+            Translation2d pose_Target = new Translation2d(targetX, targetY);
+            Translation2d offsetHood = new Translation2d(0.19719, 0);
+            Translation2d poseHood = robot.plus(offsetHood.rotateBy(heading));
 
-            double omega = alignPid.calculate(
-                heading.getRadians(),
-                desiredAngle.getRadians()
-            );
+            Translation2d angleHoodHub = pose_Target.minus(poseHood);
+            Rotation2d targetAngleHood = angleHoodHub.getAngle();
 
-            omega = MathUtil.clamp(omega, -3, 3);
+            OmegaCmd = headingPID.calculate(heading.getDegrees(), targetAngleHood.getDegrees());
+            OmegaCmd = MathUtil.clamp(OmegaCmd, -0.7, 0.7);
 
-            setControl(
-                holdAndRotate
-                    .withVelocityX(0.0)
-                    .withVelocityY(0.0)
-                    .withRotationalRate(omega * 4.5)
-            );
+            if(Math.abs(headingPID.getError()) < 6) OmegaCmd = 0;
+
+            setControl(holdAndRotate
+                .withVelocityX(0.0)
+                .withVelocityY(0.0)
+                .withRotationalRate(OmegaCmd * 5.12)); /*mexer no valor dele/*/
         }).until(() -> {
             Pose2d pose = getPose();
             Rotation2d heading = pose.getRotation();
+            Translation2d offsetHood = new Translation2d(0.19719, 0);
+            Translation2d poseHood = pose.getTranslation().plus(offsetHood.rotateBy(heading));
+
             Rotation2d desiredAngle =
                 new Translation2d(targetX, targetY)
                     .minus(pose.getTranslation())
@@ -373,16 +374,20 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             double error = MathUtil.angleModulus(
                 desiredAngle.minus(heading).getRadians()
             );
-
-            alinhoAuto = Math.abs(error) < Math.toRadians(3) ? true : false;
+            
+            alinhoAuto = Math.abs(error) < 6 ? true : false;
             Hood.getAlingAuto(alinhoAuto);
-            return Math.abs(error) < Math.toRadians(3);
+
+            if(Math.abs(error) < 6) OmegaCmd = 0;
+
+            return Math.abs(error) < 6;
         });
     }
 
     public boolean getAlinhou(){
         return alinhoAuto;
     }
+
     /**
     * Metodo utilizado para atualizar a odometria do robo de forma precisa quando o mesmo se encontra parado.
     * @param mt2 MegaTAG2 relacionado a camera alvo.
@@ -418,11 +423,13 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     * Metodo utilizado para atualizar a odometria do robo de forma precisa quando o mesmo se encontra parado.
     * @param mt2 MegaTAG2 relacionado a camera alvo.
     */
-    public void odometryUpdateAutonomo(LimelightHelpers.PoseEstimate mt2) {
+    public void updateFrontCAM() {
+        var mt2Front = LimelightHelpers.getBotPoseEstimate_wpiBlue(frontCAM);
+
         double omega = Math.abs(this.getPigeon2().getAngularVelocityZDevice().getValueAsDouble());
-        if (megaTagUpdateOdometry(mt2, 3.5, 45.0, omega)) {
+        if (megaTagUpdateOdometry(mt2Front, 3.5, 45.0, omega)) {
             Pose2d currentPose = this.getState().Pose;
-            Pose2d newPose = new Pose2d(mt2.pose.getTranslation(), currentPose.getRotation());
+            Pose2d newPose = new Pose2d(mt2Front.pose.getTranslation(), currentPose.getRotation());
 
             this.resetPose(newPose);
             System.out.println("[VISÃO] Checkpoint Autônomo: Erro das rodas zerado!");
@@ -431,19 +438,6 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
 
     public void configAngleInit() {
         double newAngle = isRedAlliance() ? 0.0 : 180.0;
-        // newAngle = 180;
-
-        this.getPigeon2().setYaw(newAngle);
-        try { Thread.sleep(20); } catch (Exception e) {}
-
-        Pose2d currentPose = this.getState().Pose;
-        this.resetPose(new Pose2d(currentPose.getTranslation(), Rotation2d.fromDegrees(newAngle)));
-        
-        System.out.println("Giroscópio Resetado fisicamente para: " + newAngle + " graus");
-    }
-
-    public void configAngleInit(double newAngle) {
-        // newAngle += isRedAlliance() ? 180.0 : 0;
 
         this.getPigeon2().setYaw(newAngle);
         try { Thread.sleep(20); } catch (Exception e) {}
@@ -468,10 +462,6 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             updateSimState(deltaTime, RobotController.getBatteryVoltage());
         });
         m_simNotifier.startPeriodic(kSimLoopPeriod);
-    }
-
-    public void setShot(boolean shotOK){
-        this.shotOk = shotOK;
     }
 
     @Override
