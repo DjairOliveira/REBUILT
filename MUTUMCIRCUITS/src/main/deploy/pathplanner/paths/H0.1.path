@@ -3,51 +3,56 @@
   "waypoints": [
     {
       "anchor": {
-        "x": 1.4100886058512552,
-        "y": 4.997795623935751
+        "x": 1.9144875843813036,
+        "y": 3.7485069968888673
       },
       "prevControl": null,
       "nextControl": {
-        "x": 0.8341683094971455,
-        "y": 4.941991017816654
+        "x": 1.6429397452117147,
+        "y": 3.798063568832961
       },
       "isLocked": false,
-      "linkedName": "D1.1E"
+      "linkedName": "H0.0E"
     },
     {
       "anchor": {
-        "x": 1.2286211114228802,
-        "y": 4.573660918005206
+        "x": 0.9,
+        "y": 3.79
       },
       "prevControl": {
-        "x": 0.7848323891283111,
-        "y": 4.5972260070043305
+        "x": 1.149883651544082,
+        "y": 3.7823736843105076
       },
       "nextControl": null,
       "isLocked": false,
-      "linkedName": null
+      "linkedName": "H0.1E"
     }
   ],
-  "rotationTargets": [],
+  "rotationTargets": [
+    {
+      "waypointRelativePos": 0.18850987432675048,
+      "rotationDegrees": 0.0
+    }
+  ],
   "constraintZones": [],
   "pointTowardsZones": [],
   "eventMarkers": [
     {
       "name": "INTAKE_OFF",
-      "waypointRelativePos": 0,
+      "waypointRelativePos": 0.0,
       "endWaypointRelativePos": null,
       "command": null
     },
     {
-      "name": "CLIMBER_PUSH",
+      "name": "CLIMBER_UP",
       "waypointRelativePos": 1.0,
       "endWaypointRelativePos": null,
       "command": null
     }
   ],
   "globalConstraints": {
-    "maxVelocity": 0.25,
-    "maxAcceleration": 0.25,
+    "maxVelocity": 0.75,
+    "maxAcceleration": 0.75,
     "maxAngularVelocity": 540.0,
     "maxAngularAcceleration": 720.0,
     "nominalVoltage": 12.0,
@@ -58,10 +63,10 @@
     "rotation": 0.0
   },
   "reversed": false,
-  "folder": "DEPOT",
+  "folder": "HUB",
   "idealStartingState": {
     "velocity": 0,
-    "rotation": -16.868088141249547
+    "rotation": 5.6188323315764
   },
   "useDefaultConstraints": false
 }

@@ -4,6 +4,7 @@
   "holonomicMode": true,
   "pathFolders": [
     "DEPOT",
+    "HUB",
     "OUTPOST"
   ],
   "autoFolders": [],

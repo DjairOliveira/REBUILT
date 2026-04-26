@@ -13,6 +13,7 @@ import com.ctre.phoenix6.swerve.SwerveRequest;
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.auto.NamedCommands;
 import com.pathplanner.lib.events.EventTrigger;
+import com.pathplanner.lib.path.PathPlannerPath;
 
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.XboxController;
@@ -83,6 +84,7 @@ public class RobotContainer {
 
         new EventTrigger("SET_SHOTTER").onTrue(Commands.runOnce(() -> mHood.setShooterRPM(3000)));
         new EventTrigger("INTAKE_ON").onTrue(Commands.runOnce(() -> intakectn=1));
+        new EventTrigger("INTAKE_OFF").onTrue(Commands.runOnce(() -> Intake.setArticulated(0.025, 0, 0.4)));
         new EventTrigger("CLIMBER_UP").onTrue(setClimber(110));
         new EventTrigger("CLIMBER_DOWN").onTrue(setClimber(0));
         new EventTrigger("CLIMBER_PUSH").onTrue(setClimber(15));
@@ -116,7 +118,7 @@ public class RobotContainer {
         /* INTAKE - BEGIN */
         activateCommandOnCondition(() -> driver.getLeftBumperButton(), new InstantCommand(() -> intakectn++));
 
-        activateCommandOnCondition(() -> intakectn == 1, intakeOn(6000));
+        activateCommandOnCondition(() -> intakectn == 1, intakeOn(3500));
         activateCommandOnCondition(() -> intakectn >= 2, intakeOff());
 
         activateCommandOnCondition(()-> driver.getAButton() && Intake.getArticulatedPosition() > 19 , dispenserOn());
@@ -142,6 +144,9 @@ public class RobotContainer {
         // activateCommandOnCondition(()-> driver.getPOV() == 180 && elapsedTime > 130 && getTowerZone(), setClimber(15));
         activateCommandOnCondition(()-> driver.getPOV() == 180 && !getTowerZone(), setClimber(0));
         activateCommandOnCondition(()-> driver.getPOV() == 180 && getTowerZone(), setClimber(15));
+        
+        Cmdriver.povLeft().whileTrue(followPath("D1.2")); /// Colocar condiçãozinha para alinhar com base no yaw
+        Cmdriver.povRight().whileTrue(followPath("O1.2"));
         /* CLIMBER - END */
 
         /*  STOP ALL MOTOR  - BEGIN */
@@ -163,6 +168,18 @@ public class RobotContainer {
 
         Cmdriver.povUp().onTrue(Commands.runOnce(() -> mSim.setSubClimber(drivetrain.getPose(), 110, 5)));
         Cmdriver.povDown().onTrue(Commands.runOnce(() -> mSim.setSubClimber(drivetrain.getPose(), 0, 5)));
+    }
+
+    private Command followPath(String pathName) {
+        return Commands.defer(() -> {
+            try {
+                PathPlannerPath path = PathPlannerPath.fromPathFile(pathName);
+                return AutoBuilder.followPath(path);
+            } catch (Exception e) {
+                DriverStation.reportError("Erro ao carregar path: " + pathName, e.getStackTrace());
+                return Commands.none();
+            }
+        }, java.util.Set.of(drivetrain));
     }
 
     /**
