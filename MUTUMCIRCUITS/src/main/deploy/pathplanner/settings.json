@@ -3,8 +3,10 @@
   "robotLength": 0.845,
   "holonomicMode": true,
   "pathFolders": [
+    "BUMP_OUT",
     "DEPOT",
     "HUB",
+    "BUMP_DEP",
     "OUTPOST"
   ],
   "autoFolders": [],

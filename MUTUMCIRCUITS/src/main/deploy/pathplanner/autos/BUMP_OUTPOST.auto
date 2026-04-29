@@ -13,13 +13,7 @@
         {
           "type": "path",
           "data": {
-            "pathName": "O1.0"
-          }
-        },
-        {
-          "type": "path",
-          "data": {
-            "pathName": "O1.1"
+            "pathName": "BO0.0"
           }
         },
         {
@@ -37,7 +31,19 @@
         {
           "type": "path",
           "data": {
-            "pathName": "O1.2"
+            "pathName": "BO0.1"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "HOOD_AIN"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "HOOD_SHOOT"
           }
         }
       ]

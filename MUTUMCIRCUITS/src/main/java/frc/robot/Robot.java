@@ -43,7 +43,10 @@ public class Robot extends LoggedRobot {
     public static GenericEntry auxiliar;
     public static GenericEntry auxiliar2;
     public static GenericEntry auxiliar3;
+    public static GenericEntry wait1Timer;
     public static GenericEntry Driver;
+
+    // public static boolean isAuto = false;
 
     private Field2d field = new Field2d();
 
@@ -71,6 +74,8 @@ public class Robot extends LoggedRobot {
         pipeline = Shuffleboard.getTab("CONFIG").add("setPipeline", 0)
             .withWidget(BuiltInWidgets.kTextView).getEntry();
 
+        wait1Timer = Shuffleboard.getTab("CONFIG").add("wait1Auto", 4)
+            .withWidget(BuiltInWidgets.kTextView).getEntry();
         Logger.recordMetadata("ProjectName", "MeuRobo");
 
         if (isReal()) {
@@ -105,6 +110,7 @@ public class Robot extends LoggedRobot {
 
         double speedHood[] = Hood.getShooterVelocity();
         double speed[] = Intake.getIntakeVelocity();
+        m_robotContainer.getWait1Auto(wait1Timer.getDouble(2));
 
         Logger.recordOutput("HOOD/v1", speedHood[0] * 60);
         Logger.recordOutput("HOOD/v2", speedHood[1] * 60);
@@ -138,7 +144,7 @@ public class Robot extends LoggedRobot {
 
     @Override
     public void autonomousInit() {
-        
+        // isAuto = true;
         m_autonomousCommand = m_robotContainer.getAutonomousCommand();
 
         if (m_autonomousCommand != null) {
@@ -147,10 +153,14 @@ public class Robot extends LoggedRobot {
     }
 
     @Override
-    public void autonomousPeriodic() {}
+    public void autonomousPeriodic() {
+        // isAuto = true;
+    }
 
     @Override
-    public void autonomousExit() {}
+    public void autonomousExit() {
+        // isAuto = true;
+    }
 
     @Override
     public void teleopInit() {

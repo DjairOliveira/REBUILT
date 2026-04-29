@@ -39,6 +39,7 @@ public class RobotContainer {
         .withDriveRequestType(DriveRequestType.OpenLoopVoltage);
 
     public boolean HoodOK = false;
+    private double timerValue = 2;
 
     final CommandXboxController Cmdriver = new CommandXboxController(0);
     public XboxController driver = new XboxController(0);
@@ -57,21 +58,23 @@ public class RobotContainer {
 
     public double colisionProtect = 1;
     public double elapsedTime = 0;
+
+    private double netProtection = 19;
     
     public RobotContainer() {
 
         configureBindings();
 
-        // NamedCommands.registerCommand("updateFrontCAM",
-        // Commands.runOnce(() -> drivetrain.odometryUpdateAutonomo(drivetrain.mt2Front)));   bode bode
-
         NamedCommands.registerCommand("HOOD_SHOOT", Commands.sequence(
                 Commands.runOnce(() -> HoodOK = true),
-                Commands.waitUntil(() -> Hood.getAligned() && Hood.getIndexando()),
+                // Commands.waitUntil(() -> Hood.getAligned() && Hood.getIndexando()),
                 Commands.waitSeconds(4),
                 Commands.runOnce(() -> HoodOK = false),
                 Commands.runOnce(() -> mHood.end())));
 
+        NamedCommands.registerCommand("WAIT1", Commands.waitSeconds(timerValue));
+        
+        /* ALTERADO */
         NamedCommands.registerCommand("HOOD_AIN", Commands.defer(() -> {
                 boolean red = DriverStation.getAlliance().orElse(DriverStation.Alliance.Blue) == DriverStation.Alliance.Red;
                 double targetX = red ? 11.914 : 4.624;
@@ -79,8 +82,6 @@ public class RobotContainer {
             return drivetrain.alignToTargetCommand(targetX, targetY);},
              java.util.Set.of(drivetrain))
         );
-
-        // NamedCommands.registerCommand("UPDATEVISION", Commands.runOnce(() -> drivetrain.updateFrontCAM()));
 
         new EventTrigger("SET_SHOTTER").onTrue(Commands.runOnce(() -> mHood.setShooterRPM(3000)));
         new EventTrigger("INTAKE_ON").onTrue(Commands.runOnce(() -> intakectn=1));
@@ -103,7 +104,6 @@ public class RobotContainer {
         activateCommandOnCondition(()-> !HoodOK, endHood());
         /* AUTONOMO - END */
 
-
         /* SWERVE DRIVE - BEGIN */
         drivetrain.setDefaultCommand(drivetrain.applyRequest(() -> { return drive
             .withVelocityX(-driver.getLeftY() * MaxSpeed * driver.getRightTriggerAxis() * drivetrain.getColision())
@@ -117,16 +117,20 @@ public class RobotContainer {
 
         /* INTAKE - BEGIN */
         activateCommandOnCondition(() -> driver.getLeftBumperButton(), new InstantCommand(() -> intakectn++));
-
-        activateCommandOnCondition(() -> intakectn == 1, intakeOn(3500));
+        activateCommandOnCondition(()-> intakectn == 1, intakePreOn());
+        
+        activateCommandOnCondition(() -> intakectn == 1 && Intake.getArticulatedPosition() > netProtection, intakeOn(6000));
         activateCommandOnCondition(() -> intakectn >= 2, intakeOff());
 
-        activateCommandOnCondition(()-> driver.getAButton() && Intake.getArticulatedPosition() > 19 , dispenserOn());
+        activateCommandOnCondition(()-> driver.getAButton() && Intake.getArticulatedPosition() > netProtection , dispenserOn());
         Cmdriver.a().onFalse(dispenserOff());
         /* INTAKE - END */
 
         /* ASSISTANCE INDEXER - BEGIN */
-        activateCommandOnCondition(()-> Hood.getIndexando() && driver.getRightBumperButton() && driver.getXButton(), indexerIntakeOn());
+        activateCommandOnCondition(()-> Hood.getIndexando() && driver.getRightBumperButton() && driver.getXButton(), Commands.runOnce(() -> Intake.setArticulated(0.015, 0, 0.1)));
+        activateCommandOnCondition(()-> Hood.getIndexando() && driver.getRightBumperButton() && driver.getXButton() && Intake.getArticulatedPosition() > netProtection, Commands.runOnce(() -> mIntake.setIntakeRPM(2500)));
+        activateCommandOnCondition(()-> Hood.getIndexando() && driver.getRightBumperButton() && driver.getXButton() && Intake.getArticulatedPosition() <= netProtection, Commands.runOnce(() -> mIntake.setIntakeRPM(0)));
+
         Cmdriver.x().onFalse(indexerIntakeOff());
         activateCommandOnCondition(()-> Intake.getArticulatedPosition() > 2 && Intake.getArticulatedPosition() < 8 && climberMove == 1, indexerClimber());
         /* ASSISTANCE INDEXER - END */
@@ -140,43 +144,54 @@ public class RobotContainer {
 
         /* CLIMBER - BEGIN */
         Cmdriver.povUp().onTrue(setClimber(110));
-        // activateCommandOnCondition(()-> driver.getPOV() == 180 && elapsedTime <= 130 && !getTowerZone(), setClimber(0));
-        // activateCommandOnCondition(()-> driver.getPOV() == 180 && elapsedTime > 130 && getTowerZone(), setClimber(15));
         activateCommandOnCondition(()-> driver.getPOV() == 180 && !getTowerZone(), setClimber(0));
         activateCommandOnCondition(()-> driver.getPOV() == 180 && getTowerZone(), setClimber(15));
         
-        Cmdriver.povLeft().whileTrue(followPath("D1.2")); /// Colocar condiçãozinha para alinhar com base no yaw
+        Cmdriver.povLeft().whileTrue(followPath("D1.2"));
         Cmdriver.povRight().whileTrue(followPath("O1.2"));
+        Cmdriver.back().whileTrue(followPath("TMID"));
         /* CLIMBER - END */
 
-        /*  STOP ALL MOTOR  - BEGIN */
+        /* STOP ALL MOTOR - BEGIN */
         Cmdriver.b().onTrue(stopAllMotors());
         activateCommandOnCondition(()-> Climber.getPosition() < 10 && driver.getBButton(), 
         Commands.runOnce(() -> Intake.setArticulated(0.1, 0, 0.5)));
-        /*  STOP ALL MOTOR  - END */
+        /* STOP ALL MOTOR - END */
 
-        /*  SIMULATION */
+        /* SIMULATION - BEGIN */
         activateCommandOnCondition(() -> intakectn == 1, new SequentialCommandGroup(
             Commands.runOnce(() -> mSim.setIntakeVelocity(4)),
             Commands.runOnce(() -> mSim.setSubArticula(22.394, 3)),
             Commands.runOnce(() -> mSim.setSubClimber(drivetrain.getPose(), 110, 5))));
 
-        activateCommandOnCondition(() -> intakectn >= 2, new SequentialCommandGroup(
-            Commands.runOnce(() -> mSim.setSubArticula(0, 3)),
-            Commands.runOnce(() -> mSim.setIntakeVelocity(0)),
-            new InstantCommand(() -> intakectn = 0)));
+        activateCommandOnCondition(() -> intakectn >= 2, Commands.runOnce(() -> mSim.setIntakeVelocity(0)));
+
+        activateCommandOnCondition(()-> SubSystemSIM.getSubClimber() < 10 && driver.getBButton(), 
+        Commands.runOnce(() -> mSim.setSubArticula(0, 3)));
+
+        activateCommandOnCondition(()-> driver.getRightBumperButton() && driver.getXButton(), Commands.runOnce(() -> mSim.setSubArticula(0, 0.5)));
+        Cmdriver.x().onFalse(Commands.runOnce(() -> mSim.setSubArticula(22.394, 3)));
+        activateCommandOnCondition(()-> SubSystemSIM.getSubArticula() > 2 && SubSystemSIM.getSubArticula() < 8 && climberMove == 1,
+            Commands.runOnce(() -> mSim.setSubClimber(drivetrain.getPose(), 0, 5)));
 
         Cmdriver.povUp().onTrue(Commands.runOnce(() -> mSim.setSubClimber(drivetrain.getPose(), 110, 5)));
-        Cmdriver.povDown().onTrue(Commands.runOnce(() -> mSim.setSubClimber(drivetrain.getPose(), 0, 5)));
+        activateCommandOnCondition(()-> driver.getPOV() == 180 && !getTowerZone(), Commands.runOnce(() -> mSim.setSubClimber(drivetrain.getPose(), 0, 5)));
+        activateCommandOnCondition(()-> driver.getPOV() == 180 && getTowerZone(), Commands.runOnce(() -> mSim.setSubClimber(drivetrain.getPose(), 15, 5)));
+        /* SIMULATION - END */
     }
 
+    /**
+     * Executa um path desejado.
+     * @param pathName String do path que deseja executar.
+     * @return movimentos e ações presentes no path.
+     */
     private Command followPath(String pathName) {
         return Commands.defer(() -> {
             try {
                 PathPlannerPath path = PathPlannerPath.fromPathFile(pathName);
                 return AutoBuilder.followPath(path);
             } catch (Exception e) {
-                DriverStation.reportError("Erro ao carregar path: " + pathName, e.getStackTrace());
+                DriverStation.reportError("path Error: " + pathName, e.getStackTrace());
                 return Commands.none();
             }
         }, java.util.Set.of(drivetrain));
@@ -221,13 +236,15 @@ public class RobotContainer {
      * @param RPM RPM do intake.
      * @return sequencia de comandos necessarios para executar a ação.
      */
-    Command intakeOn(double RPM){
+    Command intakePreOn(){
         return new SequentialCommandGroup(
-            Commands.runOnce(() -> mIntake.setIntakeRPM(RPM)),
             Commands.runOnce(() -> Intake.setArticulated(0.1, 22.394, 0.5)),
             setClimber(110));
     }
 
+    Command intakeOn(double RPM){
+        return Commands.runOnce(() -> mIntake.setIntakeRPM(RPM));
+    }
     /**
      * Desliga o intake
      * @param null
@@ -269,11 +286,11 @@ public class RobotContainer {
      * @param null
      * @return sequencia de comandos necessarios para executar a ação.
      */
-    Command indexerIntakeOn(){
-        return new SequentialCommandGroup(
-            Commands.runOnce(() -> Intake.setArticulated(0.015, 0, 0.1)),
-            Commands.runOnce(() -> mIntake.setIntakeRPM(2500)));
-    }
+    // Command indexerIntakePreOn(){
+    //     return new SequentialCommandGroup(
+    //         Commands.runOnce(() -> Intake.setArticulated(0.015, 0, 0.1)),
+    //         Commands.runOnce(() -> mIntake.setIntakeRPM(2500)));
+    // }
 
     /**
      * Desliga o sistema de auxilio de fuls com intake.
@@ -348,6 +365,10 @@ public class RobotContainer {
      */
     public void configInit(){
         drivetrain.configAngleInit();
+    }
+
+    public void getWait1Auto(double value){
+        timerValue = value;;
     }
 
     /**

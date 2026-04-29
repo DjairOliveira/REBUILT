@@ -79,11 +79,11 @@ public class Climber  extends Command {
         Pose2d robotPose = currentPose;
 
         if((robotPose.getX() >= blueX-0.2 && robotPose.getX() <= (blueX-0.2)+1.2)
-            || (robotPose.getX() >= (redX+0.2) - 1.2 && robotPose.getX() <= redX+0.2)){
+        || (robotPose.getX() >= (redX+0.2) - 1.2 && robotPose.getX() <= redX+0.2)){
+            if(position < 1) mclimber.setControl(PID.withPosition(position));
         }
-        else{
-            mclimber.setControl(PID.withPosition(position));
-        }
+        else mclimber.setControl(PID.withPosition(position));
+        
     }
 
     /**

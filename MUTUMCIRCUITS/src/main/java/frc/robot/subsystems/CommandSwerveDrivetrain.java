@@ -7,7 +7,6 @@ import org.littletonrobotics.junction.Logger;
 
 import com.ctre.phoenix6.Utils;
 import com.ctre.phoenix6.swerve.SwerveDrivetrainConstants;
-import com.ctre.phoenix6.swerve.SwerveModule;
 import com.ctre.phoenix6.swerve.SwerveModuleConstants;
 import com.ctre.phoenix6.swerve.SwerveRequest;
 
@@ -27,6 +26,7 @@ import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.XboxController;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Subsystem;
+import com.ctre.phoenix6.swerve.SwerveModule;
 
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.config.RobotConfig;
@@ -34,6 +34,7 @@ import com.pathplanner.lib.config.PIDConstants;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 
 import frc.robot.LimelightHelpers;
+import frc.robot.Robot;
 import frc.robot.generated.TunerConstants.TunerSwerveDrivetrain;
 
 public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Subsystem {
@@ -44,9 +45,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     String leftCAM  = "limelight-left";
     String rightCAM = "limelight-right";
 
-    PIDController headingPID = new PIDController(0.032, 0.0001, 0.001);
-
-    private double MaxAngularRate = Math.PI * 1.5; // ~4.7 rad/s
+    PIDController headingPID = new PIDController(0.028, 0.0001, 0.001);
 
     private double fixedAngle = 0;
 
@@ -119,13 +118,18 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             fixedAngle = isRedAlliance() ? 0 : 180;
 
             headingPID.enableContinuousInput(-180, 180);
-            headingPID.setTolerance(0.5);
+            headingPID.setTolerance(1.5);
+
+            // /* ALTERADO */
+            // if(!Robot.isAuto){
+            //     if(!isRedAlliance()) this.resetPose(new Pose2d(2, 4, new Rotation2d(Math.PI)));
+            //     else this.resetPose(new Pose2d(13.5, 4, new Rotation2d(0)));
+            // }
 
             ctrInit = false;
         }
 
         double YawRaw = this.getPigeon2().getYaw().getValueAsDouble();
-        // double YawReal = YawRaw * Constants.FATOR_ESCALA_PIGEON;
         double YawReal = YawRaw;
         double YawWrapping = MathUtil.inputModulus(YawReal, -180, 180);
 
@@ -147,6 +151,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             Pose2d visionPose = new Pose2d(mt2Left.pose.getTranslation(), new Rotation2d(Math.toRadians(YawWrapping)));
 
             addVisionMeasurement(visionPose, mt2Left.timestampSeconds, edu.wpi.first.math.VecBuilder.fill(xyStdDev, xyStdDev, 999999.0));
+            // updateLimelightAngle(leftCAM, YawWrapping);     /* ALTERADO */
             Logger.recordOutput("VISION/Left", mt2Left.pose);
         }
 
@@ -155,6 +160,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             Pose2d visionPose = new Pose2d(mt2Right.pose.getTranslation(), new Rotation2d(Math.toRadians(YawWrapping)));
 
             addVisionMeasurement(visionPose, mt2Right.timestampSeconds, edu.wpi.first.math.VecBuilder.fill(xyStdDev, xyStdDev, 999999.0));
+            // updateLimelightAngle(rightCAM, YawWrapping);   /* ALTERADO */
             Logger.recordOutput("VISION/Right", mt2Right.pose);
         }
 
@@ -163,7 +169,6 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         ChassisSpeeds fieldSpeeds = ChassisSpeeds.fromRobotRelativeSpeeds(getState().Speeds, heading);
 
         double speedX = fieldSpeeds.vxMetersPerSecond;
-        // double speedY = fieldSpeeds.vyMetersPerSecond;
 
         if(Climber.getPosition() >= 1){
             if(currentPose.getX() >= 4.628 - 1 && currentPose.getX() <= 4.628 + 1){
@@ -208,39 +213,18 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             else if(currentDeg >= -180 && currentDeg < -90) targetDeg = -135;
 
             Rotation2d targetAngle = Rotation2d.fromDegrees(targetDeg);
-            // double error = MathUtil.angleModulus(targetAngle.minus(getHeading()).getRadians());
-
             OmegaCmd = headingPID.calculate(getHeading().getDegrees(), targetAngle.getDegrees());
-
-            // OmegaCmd = MathUtil.clamp(OmegaCmd, -0.7, 0.7);
-     
-            // double kP = 1;
-            // OmegaCmd = kP * error;
-
             OmegaCmd = MathUtil.clamp(OmegaCmd, -1, 1);
-
             fixedAngle = YawWrapping;
-
-            /*  analizar a possibilidade de mudar isso juntando os dois */
         }
         else if(Math.abs(m_Control.getRightX()) < 0.1){
             if(m_Control.getRightBumperButton()){
                 OmegaCmd = Hood.getOmega();
                 fixedAngle = YawWrapping;
-                Logger.recordOutput("to aqui men", "TO MEMO");
             }
             else{
-                // Pose2d robot_getValues = getPose();
-                // Rotation2d Robot_Yaw = robot_getValues.getRotation();
-
                 Rotation2d targetAngle = Rotation2d.fromDegrees(fixedAngle);
-                // double error = MathUtil.angleModulus(targetAngle.minus(Robot_Yaw).getRadians());
-
-                // double kP = 1.15;
-                // OmegaCmd = kP * error;
-
                 OmegaCmd = headingPID.calculate(fixedAngle, targetAngle.getDegrees());
-                
                 OmegaCmd = MathUtil.clamp(OmegaCmd, -1, 1);
             }
         }
@@ -270,19 +254,14 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         Logger.recordOutput("VISION/mt2Front", mt2Front != null ? mt2Front.pose.getX() : 0.0);
         Logger.recordOutput("VISION/mt2Left", mt2Left != null ? mt2Left.pose.getX() : 0.0);
         Logger.recordOutput("VISION/mt2Right", mt2Right != null ? mt2Right.pose.getX() : 0.0);
-        Logger.recordOutput("AUTO/OmegaFinal", shotOk ? Hood.getOmega() * MaxAngularRate : getState().Speeds.omegaRadiansPerSecond);
+        // Logger.recordOutput("AUTO/OmegaFinal", shotOk ? Hood.getOmega() * MaxAngularRate : getState().Speeds.omegaRadiansPerSecond);
     }
 
     public boolean isValid(LimelightHelpers.PoseEstimate est) {
     return est != null
         && est.tagCount > 1
-        && est.avgTagDist < 4.0;   // distância máxima
+        && est.avgTagDist < 4.0;
     }
-
-    // public boolean megaTagUpdateOdometry(LimelightHelpers.PoseEstimate mt2, double maxDistanceTAG, double maxRotation) {
-    //     double omega = Math.abs(this.getPigeon2().getAngularVelocityZDevice().getValueAsDouble());
-    //     return mt2 != null && mt2.tagCount > 1 && mt2.avgTagDist < maxDistanceTAG && omega < maxRotation ? true : false;
-    // }
 
     public boolean megaTagUpdateOdometry(LimelightHelpers.PoseEstimate mt2, double maxDistanceTAG, double maxRotation, double omega) {
         return mt2 != null && mt2.tagCount > 1 && mt2.avgTagDist < maxDistanceTAG && omega < maxRotation ? true : false;
@@ -312,7 +291,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         return OmegaCmd;
     }
 
-    // Configura o PathPlanner 
+    // Configura o PathPlanner
     private void configurePathPlanner() {
         try {
             //pega o arquivo .json com as configs do robo.
@@ -323,8 +302,6 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
                 this::resetPose, 
                 () -> getState().Speeds, 
                 (speeds, feedforwards) -> setControl(autoRequest.withSpeeds(speeds)),
-
-                // PID que o robô utilizará para translação e para rotação durante o Autônomo
                 new PPHolonomicDriveController(new PIDConstants(5, 0.0, 0.0), new PIDConstants(5, 0.0, 0.0)),
                 config, 
                 () -> DriverStation.getAlliance().orElse(DriverStation.Alliance.Blue) == DriverStation.Alliance.Red, 
@@ -354,12 +331,17 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             OmegaCmd = headingPID.calculate(heading.getDegrees(), targetAngleHood.getDegrees());
             OmegaCmd = MathUtil.clamp(OmegaCmd, -0.7, 0.7);
 
-            if(Math.abs(headingPID.getError()) < 6) OmegaCmd = 0;
+            if(Math.abs(headingPID.getError()) < 6) {
+                OmegaCmd = 0;
+                // headingPID.setTolerance
+            }
+
+            fixedAngle = heading.getDegrees(); /* ALTERADO */
 
             setControl(holdAndRotate
                 .withVelocityX(0.0)
                 .withVelocityY(0.0)
-                .withRotationalRate(OmegaCmd * 5.12)); /*mexer no valor dele/*/
+                .withRotationalRate(OmegaCmd * 5.12));
         }).until(() -> {
             Pose2d pose = getPose();
             Rotation2d heading = pose.getRotation();
@@ -371,14 +353,13 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
                     .minus(pose.getTranslation())
                     .getAngle();
 
-            double error = MathUtil.angleModulus(
-                desiredAngle.minus(heading).getRadians()
-            );
+            double error = MathUtil.angleModulus(desiredAngle.minus(heading).getRadians());
             
             alinhoAuto = Math.abs(error) < 6 ? true : false;
             Hood.getAlingAuto(alinhoAuto);
 
             if(Math.abs(error) < 6) OmegaCmd = 0;
+            fixedAngle = heading.getDegrees(); /* ALTERADO */
 
             return Math.abs(error) < 6;
         });

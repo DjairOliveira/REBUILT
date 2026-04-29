@@ -11,22 +11,15 @@
           }
         },
         {
-          "type": "sequential",
+          "type": "named",
           "data": {
-            "commands": [
-              {
-                "type": "named",
-                "data": {
-                  "name": "HOOD_AIN"
-                }
-              },
-              {
-                "type": "named",
-                "data": {
-                  "name": "HOOD_SHOOT"
-                }
-              }
-            ]
+            "name": "HOOD_AIN"
+          }
+        },
+        {
+          "type": "named",
+          "data": {
+            "name": "HOOD_SHOOT"
           }
         },
         {

@@ -24,8 +24,6 @@ import edu.wpi.first.math.geometry.Rotation3d;
 import edu.wpi.first.math.geometry.Translation2d;
 import edu.wpi.first.wpilibj.DriverStation;
 import edu.wpi.first.wpilibj.Timer;
-import edu.wpi.first.wpilibj.smartdashboard.Field2d;
-import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import frc.robot.Robot;
 
@@ -71,17 +69,16 @@ public class Hood extends Command {
     private boolean RPMShooterOK = false;
     private final class Interpolation{
         private final static double[] distances = {1.2, 1.6, 2.0, 2.4, 2.8, 3.2, 3.6, 4, 4.4, 4.8, 5.2, 5.6};
-        private final static double[] RPM = {3200, 3400, 3950, 4100, 4150, 4200, 4250, 4300, 4375, 4500, 4700, 4950};
+        // private final static double[] RPM = {3200, 3400, 3950, 4100, 4150, 4200, 4250, 4300, 4375, 4500, 4700, 4950};
+        private final static double[] RPM = {3700, 3850, 3950, 4100, 4150, 4200, 4250, 4300, 4375, 4500, 4700, 4950};
     }
-    // PIDController headingPID = new PIDController(0.025, 0.0, 0.001);
-    PIDController headingPID = new PIDController(0.032, 0.0, 0.001);
+
+    PIDController headingPID = new PIDController(0.0225, 0.0, 0.0);  //KD 0.001
     private boolean ctrTimer = true;
-    private Field2d field = new Field2d();
     private static Pose2d robotPose;
-    // private final CommandSwerveDrivetrain swerve;
+
 
     public Hood() {
-        // this.swerve = swerve;
         configHood(0.75, -0.1, 0.45);
         configIndex(NeutralModeValue.Coast);
         configShooter(0.435, NeutralModeValue.Coast);
@@ -134,9 +131,15 @@ public class Hood extends Command {
             RPMBelt = 0;
         }
         else{
-            poseHoodSim = map(parabola(distanceHood, distanceHood < 3.45 ? 0.6 : 1, targetX, targetY, targetZ), 40, 80, -110, -70);
-            poseHood = map(parabola(distanceHood, 1.35, targetX, targetY, targetZ), 82, 40.1, 0.0, 1.85);
-            RPMShooter = MathUtil.clamp(interpolate(distanceHood, Interpolation.distances, Interpolation.RPM), 3200, 4950);
+            if(isRedAlliance() && (robotPose.getX() <= 4.6) || !isRedAlliance() && (robotPose.getX() >= 11.9)){
+                poseHood = 1.1;
+                RPMShooter = 6000;
+            }
+            else{
+                poseHoodSim = map(parabola(distanceHood, distanceHood < 3.45 ? 0.6 : 1, targetX, targetY, targetZ), 40, 80, -110, -70);
+                poseHood = map(parabola(distanceHood, 1.35, targetX, targetY, targetZ), 82, 40.1, 0.0, 1.85);
+                RPMShooter = MathUtil.clamp(interpolate(distanceHood, Interpolation.distances, Interpolation.RPM), 3200, 4950);
+            }
         }
 
         setHoodPosition(poseHood);
@@ -154,7 +157,7 @@ public class Hood extends Command {
                 ctrAligned=false;
             }
 
-            if (RPMShooterOK && errorTimer(timerShot) > 1) {
+            if (RPMShooterOK) {  /* && errorTimer(timerShot) > 1 ALTERADO */
                 if(ctrTimer){
                     startTime = Timer.getFPGATimestamp();
                     ctrTimer = false;
@@ -208,17 +211,16 @@ public class Hood extends Command {
         Logger.recordOutput("HOOD/RPM/GetShooter2", getShooterVelocity()[1] * 60);
         Logger.recordOutput("HOOD/RPM/GetShooter1Acceleration", getShooteracceleration()[0]);
         Logger.recordOutput("HOOD/RPM/GetShooter2Acceleration", getShooteracceleration()[1]);
-                
-                Logger.recordOutput("HOOD/RPM/GetFeeder", getIndexVelocity()[0] * 60);
-                Logger.recordOutput("HOOD/RPM/GetIndex", getIndexVelocity()[1] * 60);
-                Logger.recordOutput("HOOD/RPM/GetBelt", getBeltVelocity() * 60);
-                Logger.recordOutput("HOOD/Ain/Aligned", aligned);
-                Logger.recordOutput("FINISH", false);
-            }
+        
+        Logger.recordOutput("HOOD/RPM/GetFeeder", getIndexVelocity()[0] * 60);
+        Logger.recordOutput("HOOD/RPM/GetIndex", getIndexVelocity()[1] * 60);
+        Logger.recordOutput("HOOD/RPM/GetBelt", getBeltVelocity() * 60);
+        Logger.recordOutput("HOOD/Ain/Aligned", aligned);
+        Logger.recordOutput("FINISH", false);
+    }
 
     public boolean isFinished() {
         return errorTimer(startTime) > 10 && indexando ? true : false;
-        // return false;
     }
     
     public static boolean isEnd() {
@@ -413,7 +415,7 @@ public class Hood extends Command {
         OmegaCmd = headingPID.calculate(Robot_Yaw.getDegrees(), targetAngleHood.getDegrees());
 
         OmegaCmd = MathUtil.clamp(OmegaCmd, -0.7, 0.7);
-        aligned = Math.abs(headingPID.getError()) < 4;
+        aligned = Math.abs(headingPID.getError()) < 5.5;
 
         // Logger.recordOutput("AIN/Heading", swerve.getHeading());
         Logger.recordOutput("ROBOT/Hood", new double[] {poseHood.getX(), poseHood.getY(), Robot_Yaw.getRadians()});

@@ -8,23 +8,17 @@ import edu.wpi.first.math.controller.PIDController;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Pose3d;
 import edu.wpi.first.math.geometry.Rotation3d;
-import edu.wpi.first.wpilibj.Timer;
 
 public class SubSystemSIM extends SubsystemBase {
-
-    private static double timerIntake;
-    private static double timerShooter;
-    private static boolean isArmazemFull = false;
-    private static boolean isArmazemCleam = false;
 
     private double subGavetaPositon = 0.0;
     private double subIntakeAngle = 120;
     private double subIntakeVelocity = 0;
     private static double subShooterVelocity = 0;
-    private double subClimberPositon = 0.0;
+    private double subClimberPositon = -0.1;
 
     private static double intakeAngleSim = 0.0;
-    private static double climberPositionSim = 0.0;
+    private static double climberPositionSim = -0.1;
     private double intakeVelocitySim = 0.0;
     private double shooterVelocitySim = 0.0;
 
@@ -105,15 +99,12 @@ public class SubSystemSIM extends SubsystemBase {
 
         if ((robotPose.getX() >= blueX - 0.2 && robotPose.getX() <= (blueX - 0.2) + 1.2)
             || (robotPose.getX() >= (redX + 0.2) - 1.2 && robotPose.getX() <= redX + 0.2)) {
-            if (!isArmazemFull && position < 20) {
+            if (position < 10) {
                 subClimberPositon = Hood.map(position, Climber.Real_Min, Climber.Real_Max, Climber.SIM_Min, Climber.SIM_Max);
             }
         }
         else {
-            if (!isArmazemFull) subClimberPositon = Hood.map(position, Climber.Real_Min, Climber.Real_Max, Climber.SIM_Min, Climber.SIM_Max);
-            else {
-                if (position >= 30) subClimberPositon = Hood.map(position, Climber.Real_Min, Climber.Real_Max, Climber.SIM_Min, Climber.SIM_Max);
-            }
+            subClimberPositon = Hood.map(position, Climber.Real_Min, Climber.Real_Max, Climber.SIM_Min, Climber.SIM_Max);
         }
     }
 
@@ -121,8 +112,9 @@ public class SubSystemSIM extends SubsystemBase {
         return Hood.map(climberPositionSim, Climber.SIM_Min, Climber.SIM_Max, Climber.Real_Min, Climber.Real_Max);
     }
 
+    // simulationPeriodic
     @Override
-    public void simulationPeriodic() {
+    public void periodic() {
 
         double intakeOutput = intakePID.calculate(intakeAngleSim, subIntakeAngle);
         intakeAngleSim += intakeOutput * 0.02;
@@ -139,24 +131,10 @@ public class SubSystemSIM extends SubsystemBase {
         double shooterVelocityOutput = shooterVelocity.calculate(shooterVelocitySim, subShooterVelocity);
         shooterVelocitySim += shooterVelocityOutput * 0.02;
 
-        if (getIntakeVelocity() >= 1 && getIntakeVelocity() <= 3.5 && getSubArticula() < 3) {
-            timerIntake = Timer.getFPGATimestamp();
-        }
-
-        if (getShooterVelocity() >= 3.1 && getShooterVelocity() <= 3.4) {
-            timerShooter = Timer.getFPGATimestamp();
-        }
-
-        isArmazemFull = Timer.getFPGATimestamp() - timerIntake > 1.25 ? false : true;
-        isArmazemCleam = (Timer.getFPGATimestamp() - timerShooter) > 2 ? true : false;
-
         Logger.recordOutput("SubSystemSim/IntakeVelocity", intakeVelocitySim);
-        Logger.recordOutput("SubSystemSim/ArmazemFull", isArmazemFull);
         Logger.recordOutput("SubSystemSim/ShooterVelocity", shooterVelocitySim);
-        Logger.recordOutput("SubSystemSim/ArmazemCleam", isArmazemCleam);
-
-        Logger.recordOutput("SubSystemSim/Position/Articula", intakeAngleSim);
-        Logger.recordOutput("SubSystemSim/Position/Climber", climberPositionSim);
+        Logger.recordOutput("SubSystemSim/Position/Articula", getSubArticula());
+        Logger.recordOutput("SubSystemSim/Position/Climber", getSubClimber());
 
         Logger.recordOutput("SubSystemSim/Hood3D", new Pose3d[] { new Pose3d(
                 0.345, 0, 0.43, new Rotation3d(0.0, Math.toRadians(Hood.getAngleHoodSim()), Math.PI)) });
