@@ -16,6 +16,8 @@ import com.ctre.phoenix6.hardware.Pigeon2;
 import edu.wpi.first.math.geometry.Pose2d;
 import edu.wpi.first.math.geometry.Rotation2d;
 import edu.wpi.first.networktables.GenericEntry;
+import edu.wpi.first.networktables.NetworkTable;
+import edu.wpi.first.networktables.NetworkTableInstance;
 import edu.wpi.first.wpilibj.Timer;
 import edu.wpi.first.wpilibj.shuffleboard.BuiltInWidgets;
 import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
@@ -45,10 +47,15 @@ public class Robot extends LoggedRobot {
     public static GenericEntry auxiliar3;
     public static GenericEntry wait1Timer;
     public static GenericEntry Driver;
+    public static GenericEntry MIRAR;
 
-    // public static boolean isAuto = false;
+    public static boolean isAuto = false;
 
     private Field2d field = new Field2d();
+
+    private NetworkTable llFront = NetworkTableInstance.getDefault().getTable("limelight-front");
+    private NetworkTable llLeft = NetworkTableInstance.getDefault().getTable("limelight-left");
+    private NetworkTable llRight = NetworkTableInstance.getDefault().getTable("limelight-right");
 
     public Robot() {
         m_robotContainer = new RobotContainer();
@@ -65,7 +72,7 @@ public class Robot extends LoggedRobot {
         auxiliar = Shuffleboard.getTab("CONFIG").add("Auxiliar", 0)
             .withWidget(BuiltInWidgets.kTextView).getEntry();
 
-        auxiliar2 = Shuffleboard.getTab("CONFIG").add("Auxiliar2", 0)
+        auxiliar2 = Shuffleboard.getTab("CONFIG").add("Auxiliar2", 82)
             .withWidget(BuiltInWidgets.kTextView).getEntry();
 
         auxiliar3 = Shuffleboard.getTab("CONFIG").add("Auxiliar3", 0)
@@ -76,10 +83,14 @@ public class Robot extends LoggedRobot {
 
         wait1Timer = Shuffleboard.getTab("CONFIG").add("wait1Auto", 4)
             .withWidget(BuiltInWidgets.kTextView).getEntry();
+
+        MIRAR = Shuffleboard.getTab("CONFIG").add("MIRAR", 1)
+            .withWidget(BuiltInWidgets.kTextView).getEntry();
+
         Logger.recordMetadata("ProjectName", "MeuRobo");
 
         if (isReal()) {
-            Logger.addDataReceiver(new WPILOGWriter());
+            Logger.addDataReceiver(new WPILOGWriter("/home/lvuser/logs"));
             Logger.addDataReceiver(new NT4Publisher());
         } else {
             // SIMULAÇÃO
@@ -110,13 +121,25 @@ public class Robot extends LoggedRobot {
 
         double speedHood[] = Hood.getShooterVelocity();
         double speed[] = Intake.getIntakeVelocity();
-        m_robotContainer.getWait1Auto(wait1Timer.getDouble(2));
+
+        m_robotContainer.getWait1Auto(wait1Timer.getDouble(4));
 
         Logger.recordOutput("HOOD/v1", speedHood[0] * 60);
         Logger.recordOutput("HOOD/v2", speedHood[1] * 60);
 
         Logger.recordOutput("INTAKE/Coletor1Speed", speed[0] * 60);
         Logger.recordOutput("INTAKE/Coletor2Speed", speed[1] * 60);
+        Logger.recordOutput("INTAKE/Position", Intake.getIntakePosition()[0]);
+        Logger.recordOutput("INTAKE/Position", Intake.getIntakePosition()[1]);
+        Logger.recordOutput("CURRENT/Intake", Intake.getIntakeCurrent()[0]);
+        Logger.recordOutput("CURRENT/Intake", Intake.getIntakeCurrent()[1]);
+        Logger.recordOutput("CURRENT/Hood", Hood.getHoodCurrent());
+        Logger.recordOutput("CURRENT/Shotter1", Hood.getShooterCurrent()[0]);
+        Logger.recordOutput("CURRENT/Shotter2", Hood.getShooterCurrent()[1]);
+        Logger.recordOutput("CURRENT/Belt", Hood.getBeltCurrent());
+        Logger.recordOutput("CURRENT/Index1", Hood.getIndexCurrent()[0]);
+        Logger.recordOutput("CURRENT/Index2", Hood.getIndexCurrent()[1]);
+
         Logger.recordOutput("INTAKE/Articulation", Intake.getArticulatedPosition());
         Logger.recordOutput("HOOD/Position", Hood.getHoodPositon());
         Logger.recordOutput("HOOD/Index", Hood.getIndexVelocity());
@@ -130,7 +153,11 @@ public class Robot extends LoggedRobot {
         Logger.recordOutput("isEnd", Hood.isEnd());
         
         Logger.recordOutput("MaxSpeed", m_robotContainer.MaxSpeed);
+        Logger.recordOutput("valuee", (Math.abs(Intake.getIntakeVelocity()[0] * 60) <= 1000 || Math.abs(Intake.getIntakeVelocity()[1] * 60) <= 1000));
         
+        llFront.getEntry("pipeline").setNumber(pipeline.getDouble(0));
+        llLeft.getEntry("pipeline").setNumber(pipeline.getDouble(0));
+        llRight.getEntry("pipeline").setNumber(pipeline.getDouble(0));
     }
 
     @Override
@@ -144,7 +171,7 @@ public class Robot extends LoggedRobot {
 
     @Override
     public void autonomousInit() {
-        // isAuto = true;
+        isAuto = true;
         m_autonomousCommand = m_robotContainer.getAutonomousCommand();
 
         if (m_autonomousCommand != null) {
@@ -154,12 +181,12 @@ public class Robot extends LoggedRobot {
 
     @Override
     public void autonomousPeriodic() {
-        // isAuto = true;
+        isAuto = true;
     }
 
     @Override
     public void autonomousExit() {
-        // isAuto = true;
+        isAuto = true;
     }
 
     @Override
@@ -170,6 +197,7 @@ public class Robot extends LoggedRobot {
 
         m_robotContainer.HoodOK = false;
         timerTeleOp = Timer.getFPGATimestamp();
+        Hood.setAlingAuto(false);
     }
 
     @Override

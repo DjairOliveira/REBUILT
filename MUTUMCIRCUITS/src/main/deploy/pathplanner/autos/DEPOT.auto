@@ -19,12 +19,6 @@
         {
           "type": "named",
           "data": {
-            "name": "HOOD_AIN"
-          }
-        },
-        {
-          "type": "named",
-          "data": {
             "name": "HOOD_SHOOT"
           }
         },
@@ -38,12 +32,6 @@
           "type": "path",
           "data": {
             "pathName": "D0.3"
-          }
-        },
-        {
-          "type": "named",
-          "data": {
-            "name": "HOOD_AIN"
           }
         },
         {

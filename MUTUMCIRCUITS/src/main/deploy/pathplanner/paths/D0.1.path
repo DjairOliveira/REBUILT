@@ -16,16 +16,16 @@
     },
     {
       "anchor": {
-        "x": 4.512825540881539,
-        "y": 5.6644967550817675
+        "x": 4.543666191155491,
+        "y": 5.555292439372327
       },
       "prevControl": {
-        "x": 6.208108969686457,
-        "y": 5.603221450426168
+        "x": 6.592937654553553,
+        "y": 5.536658737072299
       },
       "nextControl": {
-        "x": 3.073100479951184,
-        "y": 5.716535010296118
+        "x": 3.1030605400368416,
+        "y": 5.568391639412018
       },
       "isLocked": false,
       "linkedName": null
@@ -56,6 +56,19 @@
       "minWaypointRelativePos": 0.6282194848824172,
       "maxWaypointRelativePos": 1.2687569988801803,
       "constraints": {
+        "maxVelocity": 3.0,
+        "maxAcceleration": 3.0,
+        "maxAngularVelocity": 540.0,
+        "maxAngularAcceleration": 720.0,
+        "nominalVoltage": 12.0,
+        "unlimited": false
+      }
+    },
+    {
+      "name": "Constraints Zone",
+      "minWaypointRelativePos": 0.46825053995678917,
+      "maxWaypointRelativePos": 0.7550755939524982,
+      "constraints": {
         "maxVelocity": 1.5,
         "maxAcceleration": 1.5,
         "maxAngularVelocity": 540.0,
@@ -84,7 +97,7 @@
   },
   "goalEndState": {
     "velocity": 0,
-    "rotation": -50.036044295238874
+    "rotation": -52.22483568467812
   },
   "reversed": false,
   "folder": "DEPOT",

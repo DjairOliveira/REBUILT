@@ -66,7 +66,7 @@
   "folder": "HUB",
   "idealStartingState": {
     "velocity": 0,
-    "rotation": 5.6188323315764
+    "rotation": 3.2996473728427005
   },
   "useDefaultConstraints": false
 }

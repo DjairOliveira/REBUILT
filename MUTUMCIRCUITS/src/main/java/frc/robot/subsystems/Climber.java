@@ -40,7 +40,7 @@ public class Climber  extends Command {
         config.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
 
         config.MotorOutput.NeutralMode = kMode;
-        config.CurrentLimits.SupplyCurrentLimit = 80;
+        config.CurrentLimits.SupplyCurrentLimit = 40;
         config.CurrentLimits.SupplyCurrentLimitEnable = false;
         config.MotorOutput.PeakForwardDutyCycle = OutMax;
         config.MotorOutput.PeakReverseDutyCycle = OutMin;
@@ -78,8 +78,8 @@ public class Climber  extends Command {
         position = MathUtil.clamp(position, 0, 110);
         Pose2d robotPose = currentPose;
 
-        if((robotPose.getX() >= blueX-0.2 && robotPose.getX() <= (blueX-0.2)+1.2)
-        || (robotPose.getX() >= (redX+0.2) - 1.2 && robotPose.getX() <= redX+0.2)){
+        if((robotPose.getX() >= blueX-0.2 && robotPose.getX() <= (blueX-0.2) + 1.2)
+        || (robotPose.getX() >= (redX+0.2) - 1.2 && robotPose.getX() <= redX + 0.2)){
             if(position < 1) mclimber.setControl(PID.withPosition(position));
         }
         else mclimber.setControl(PID.withPosition(position));

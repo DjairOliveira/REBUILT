@@ -42,7 +42,7 @@ public class Intake {
         cfgIntakeL.OpenLoopRamps.DutyCycleOpenLoopRampPeriod = 0;
 
         cfgIntakeL.MotorOutput.NeutralMode = NeutralModeValue.Coast;
-        cfgIntakeL.CurrentLimits.SupplyCurrentLimit = 80;
+        cfgIntakeL.CurrentLimits.SupplyCurrentLimit = 40;
         cfgIntakeL.CurrentLimits.SupplyCurrentLimitEnable = false;
         cfgIntakeL.Feedback.SensorToMechanismRatio = 1.0;
         cfgIntakeL.MotorOutput.PeakForwardDutyCycle = 1;
@@ -55,7 +55,7 @@ public class Intake {
         cfgIntakeR.OpenLoopRamps.DutyCycleOpenLoopRampPeriod = 0;
 
         cfgIntakeR.MotorOutput.NeutralMode = NeutralModeValue.Coast;
-        cfgIntakeR.CurrentLimits.SupplyCurrentLimit = 80;
+        cfgIntakeR.CurrentLimits.SupplyCurrentLimit = 40;
         cfgIntakeR.CurrentLimits.SupplyCurrentLimitEnable = false;
         cfgIntakeR.Feedback.SensorToMechanismRatio = 1.0;
         cfgIntakeR.MotorOutput.PeakForwardDutyCycle = 1;
@@ -76,7 +76,13 @@ public class Intake {
             mIntakeL.getPosition().getValueAsDouble(),
             mIntakeR.getPosition().getValueAsDouble()};
     }
-    
+
+    static public double[] getIntakeCurrent(){
+        return new double[] {
+            mIntakeL.getSupplyCurrent().getValueAsDouble(),
+            mIntakeR.getSupplyCurrent().getValueAsDouble()};
+    }
+
     /**
     * @return a velocidade dos coletores do intake.
     */
@@ -134,7 +140,7 @@ public class Intake {
 
         cfg.MotorOutput.NeutralMode = NeutralModeValue.Brake;
 
-        cfg.CurrentLimits.SupplyCurrentLimit = 80;
+        cfg.CurrentLimits.SupplyCurrentLimit = 40;
         cfg.CurrentLimits.SupplyCurrentLimitEnable = true;
 
         cfg.MotorOutput.PeakForwardDutyCycle = OutMax;

@@ -32,9 +32,9 @@ public class Hood extends Command {
     private static double timerShot;
     private static boolean aligned = false;
     private boolean articulaAux = false;
-    private boolean ctrAligned = true;
     private static boolean indexando = false;
     private static boolean alingOk = false;
+    private boolean ctrAligned = true;
             
     /* Shooter INIT */
     public static final TalonFX mShooterR = new TalonFX(22);
@@ -69,14 +69,12 @@ public class Hood extends Command {
     private boolean RPMShooterOK = false;
     private final class Interpolation{
         private final static double[] distances = {1.2, 1.6, 2.0, 2.4, 2.8, 3.2, 3.6, 4, 4.4, 4.8, 5.2, 5.6};
-        // private final static double[] RPM = {3200, 3400, 3950, 4100, 4150, 4200, 4250, 4300, 4375, 4500, 4700, 4950};
         private final static double[] RPM = {3700, 3850, 3950, 4100, 4150, 4200, 4250, 4300, 4375, 4500, 4700, 4950};
     }
 
-    PIDController headingPID = new PIDController(0.0225, 0.0, 0.0);  //KD 0.001
+    PIDController headingPID = new PIDController(0.025, 0.0, 0.001);
     private boolean ctrTimer = true;
     private static Pose2d robotPose;
-
 
     public Hood() {
         configHood(0.75, -0.1, 0.45);
@@ -84,7 +82,7 @@ public class Hood extends Command {
         configShooter(0.435, NeutralModeValue.Coast);
         configBelt(0.1, -0.1, 0.1);
         headingPID.enableContinuousInput(-180, 180);
-        headingPID.setTolerance(0.5);
+        headingPID.setTolerance(2);
     }
 
     public void execute() {
@@ -97,16 +95,14 @@ public class Hood extends Command {
 
         double RPMShooter = 0, RPMBelt = 0, RPMIndex = 0;
 
-        // Pose2d robotPose = swerve.getPose();
-
         double[] velocityShooter = getShooterVelocity();
         double[] velocityIndex = getIndexVelocity();
 
         /*  Ajuste de target em função da arena - INIT */
         if((!isRedAlliance() && robotPose.getX() <= blueX) || (isRedAlliance() && robotPose.getX() >= redX)){
             targetX = isRedAlliance() ? 11.914 : 4.624;
-            targetY = 4.044;
-            targetZ = 1.63;//1.63
+            targetY = 3.915;
+            targetZ = 1.63;
         }
         else if((!isRedAlliance() && robotPose.getX() > blueX + 1.4) || (isRedAlliance() && robotPose.getX() < redX - 1.4)){
             if((robotPose.getY() - 4.044) >= 0) targetY = 6;
@@ -123,6 +119,7 @@ public class Hood extends Command {
         /*  Ajuste de target em função da arena - END */
         
         double distanceHood = hoodAling(targetX, targetY);
+
         if((robotPose.getX() >= blueX-0.2 && robotPose.getX() <= (blueX-0.2)+1.2) || (robotPose.getX() >= (redX+0.2) - 1.2 && robotPose.getX() <= redX+0.2)){
             poseHoodSim = -70;
             poseHood = 0;
@@ -136,8 +133,8 @@ public class Hood extends Command {
                 RPMShooter = 6000;
             }
             else{
-                poseHoodSim = map(parabola(distanceHood, distanceHood < 3.45 ? 0.6 : 1, targetX, targetY, targetZ), 40, 80, -110, -70);
-                poseHood = map(parabola(distanceHood, 1.35, targetX, targetY, targetZ), 82, 40.1, 0.0, 1.85);
+                poseHoodSim = map(parabola(distanceHood, 1.35, targetX, targetY, targetZ), 40.1, 84, -110, -70);
+                poseHood = map(parabola(distanceHood, 1.35, targetX, targetY, targetZ), 84, 40.1, 0.0, 1.85);
                 RPMShooter = MathUtil.clamp(interpolate(distanceHood, Interpolation.distances, Interpolation.RPM), 3200, 4950);
             }
         }
@@ -153,11 +150,9 @@ public class Hood extends Command {
         if(aligned || alingOk){
             if(ctrAligned) {
                 timerShot = Timer.getFPGATimestamp();
-                tArticula = Timer.getFPGATimestamp();
                 ctrAligned=false;
             }
-
-            if (RPMShooterOK) {  /* && errorTimer(timerShot) > 1 ALTERADO */
+            if (RPMShooterOK && errorTimer(timerShot) > 0.75) {
                 if(ctrTimer){
                     startTime = Timer.getFPGATimestamp();
                     ctrTimer = false;
@@ -171,25 +166,16 @@ public class Hood extends Command {
                 RPMBelt = 0;
                 indexando = false;
             }
-
-            tHigh = 2;
-            tLow = 1;
-            if(errorTimer(tArticula) < tHigh) articulaAux = false;
-            else if(errorTimer(tArticula) >= tHigh && errorTimer(tArticula) < tHigh + tLow) articulaAux = true;
-            else tArticula = Timer.getFPGATimestamp();
         }
         else{
             RPMIndex = 0;
+            indexando = false;
             RPMBelt = 0;
             articulaAux = false;
             startTime = Timer.getFPGATimestamp();
         }
 
         setIndexer(RPMIndex, RPMBelt);
-
-        // if(Math.abs(targetRPMShooter - velocityShooter[0] * 60) >= 250 || !indexando){
-        //     startTime = Timer.getFPGATimestamp();
-        // }
 
         Logger.recordOutput("HOOD/getArticular", getarticulaAux());
         Logger.recordOutput("HOOD/TimerArticular", errorTimer(tArticula));
@@ -216,29 +202,28 @@ public class Hood extends Command {
         Logger.recordOutput("HOOD/RPM/GetIndex", getIndexVelocity()[1] * 60);
         Logger.recordOutput("HOOD/RPM/GetBelt", getBeltVelocity() * 60);
         Logger.recordOutput("HOOD/Ain/Aligned", aligned);
-        Logger.recordOutput("FINISH", false);
     }
 
     public boolean isFinished() {
-        return errorTimer(startTime) > 10 && indexando ? true : false;
+        return errorTimer(startTime) > 4 && indexando ? true : false;
     }
     
     public static boolean isEnd() {
-        return errorTimer(startTime) > 10 && indexando ? true : false;
+        return errorTimer(startTime) > 4 && indexando ? true : false;
     }
         
     public void end() {
         setHoodPosition(0);
-        setShooterRPM(1500);
+        setShooterRPM(1000);
         stopIndexSpeed();
         stopBelt();
     
         SubSystemSIM.setShooterVelocity(0);
         aligned=false;
         articulaAux=false;
-        ctrAligned=true;
         indexando = false;
         ctrTimer = true;
+        ctrAligned = true;
     
         Logger.recordOutput("HOOD/Ain/Aligned", aligned);
     }
@@ -247,9 +232,9 @@ public class Hood extends Command {
         robotPose = setPose;
     }
     
-    public static void getAlingAuto(boolean aling){
-                alingOk = aling;
-        }
+    public static void setAlingAuto(boolean aling){
+        alingOk = aling;
+    }
 
     /**
     * @return true se o intake puder articular para ajudar no disparo.
@@ -315,7 +300,6 @@ public class Hood extends Command {
     * @param maxH Alura maxima do Fuel durante a trajetória.
     */
     public double parabola (double distHoodToHUB, double hChange, double Target_X, double Target_Y, double Target_Z) {
-        // Pose2d robot_getValues = swerve.getPose();
         Pose2d robot_getValues = robotPose;
         Translation2d robot_pose = robot_getValues.getTranslation();
         Translation2d pose_Target = new Translation2d(Target_X , Target_Y);
@@ -389,7 +373,6 @@ public class Hood extends Command {
     * @param Target_Y Posição Y do alvo a ser atingido.
     */
     private double hoodAling (double Target_X, double Target_Y){
-        // Pose2d robot_getValues = swerve.getPose();
         Pose2d robot_getValues = robotPose;
         Rotation2d Robot_Yaw = robot_getValues.getRotation();
         Translation2d robot_pose = robot_getValues.getTranslation();
@@ -402,31 +385,14 @@ public class Hood extends Command {
         Translation2d angleHoodHub = pose_Target.minus(poseHood);
         Rotation2d targetAngleHood = angleHoodHub.getAngle();
 
-        // Translation2d angleHub = pose_Target.minus(robot_pose);
-        // Rotation2d targetAngleRobot = angleHub.getAngle();
-
-        // Rotation2d yawAlliance = isRedAlliance() ? new Rotation2d(Math.PI) : new Rotation2d(0);
-        // yawAlliance = new Rotation2d(MathUtil.inputModulus(Robot_Yaw.plus(yawAlliance).getRadians(), -Math.PI, Math.PI));
-
-        // double error = MathUtil.angleModulus(targetAngleHood.minus(Robot_Yaw).getRadians());
-        // double kP = kPHeading.Carpete;
-        // OmegaCmd = kP * error;
-
         OmegaCmd = headingPID.calculate(Robot_Yaw.getDegrees(), targetAngleHood.getDegrees());
 
         OmegaCmd = MathUtil.clamp(OmegaCmd, -0.7, 0.7);
-        aligned = Math.abs(headingPID.getError()) < 5.5;
+        aligned = Math.abs(headingPID.getError()) < 5;
 
-        // Logger.recordOutput("AIN/Heading", swerve.getHeading());
         Logger.recordOutput("ROBOT/Hood", new double[] {poseHood.getX(), poseHood.getY(), Robot_Yaw.getRadians()});
         Logger.recordOutput("ROBOT/OdometryRobot", new double[] {robot_pose.getX(), robot_pose.getY(), Robot_Yaw.getRadians()});
         Logger.recordOutput("FIELD/Target", new double[] {Target_X, Target_Y, Math.toRadians(0)});
-        
-        // Pose2d robot = new Pose2d(swerve.getPose().getX(), swerve.getPose().getY(), new Rotation2d(swerve.getPose().getRotation().getRadians()));
-
-        // SmartDashboard.putData("FIELD", field);
-        // field.getObject("Robot").setPose(robot);
-
 
         return distanceHood;
     }
@@ -539,6 +505,12 @@ public class Hood extends Command {
             mShooterR.getVelocity().getValueAsDouble()};
     }
 
+    static public double[] getShooterCurrent(){
+        return new double[] {
+            mShooterL.getSupplyCurrent().getValueAsDouble(),
+            mShooterR.getSupplyCurrent().getValueAsDouble()};
+    }
+
     static public double[] getShooteracceleration(){
         return new double[] {
             mShooterL.getAcceleration().getValueAsDouble(),
@@ -625,7 +597,7 @@ public class Hood extends Command {
 
         cfg.MotorOutput.NeutralMode = NeutralModeValue.Brake;
 
-        cfg.CurrentLimits.SupplyCurrentLimit = 80;
+        cfg.CurrentLimits.SupplyCurrentLimit = 30;
         cfg.CurrentLimits.SupplyCurrentLimitEnable = true;
 
         cfg.MotorOutput.PeakForwardDutyCycle = OutMax;
@@ -666,6 +638,9 @@ public class Hood extends Command {
         mHood.setControl(pidCtrHood.withPosition(position));
     }
 
+    static public double getHoodCurrent(){
+        return mHood.getSupplyCurrent().getValueAsDouble();
+    }
     /**
     * Configura o motor de inclinação do Hood.
     * @motor 2 x Kraken X60 opostos um ao outro.
@@ -680,7 +655,7 @@ public class Hood extends Command {
         cfgFeed.OpenLoopRamps.DutyCycleOpenLoopRampPeriod = 0;
 
         cfgFeed.MotorOutput.NeutralMode = kMode;
-        cfgFeed.CurrentLimits.SupplyCurrentLimit = 80;
+        cfgFeed.CurrentLimits.SupplyCurrentLimit = 40;
         cfgFeed.CurrentLimits.SupplyCurrentLimitEnable = false;
         cfgFeed.Feedback.SensorToMechanismRatio = 1.0;
         cfgFeed.MotorOutput.PeakForwardDutyCycle = 1;
@@ -698,7 +673,7 @@ public class Hood extends Command {
         cfgIndex.OpenLoopRamps.DutyCycleOpenLoopRampPeriod = 0;
 
         cfgIndex.MotorOutput.NeutralMode = kMode;
-        cfgIndex.CurrentLimits.SupplyCurrentLimit = 80;
+        cfgIndex.CurrentLimits.SupplyCurrentLimit = 40;
         cfgIndex.CurrentLimits.SupplyCurrentLimitEnable = false;
         cfgIndex.Feedback.SensorToMechanismRatio = 1.0;
         cfgIndex.MotorOutput.PeakForwardDutyCycle = 1;
@@ -737,6 +712,13 @@ public class Hood extends Command {
             mFeed.getVelocity().getValueAsDouble(),
             mIndex.getVelocity().getValueAsDouble()};
     }
+
+    static public double[] getIndexCurrent() {
+        return new double[] {
+            mFeed.getSupplyCurrent().getValueAsDouble(),
+            mIndex.getSupplyCurrent().getValueAsDouble()};
+    }
+
     /**
     * Define a velocidade dos motores do Indexer
     *
@@ -803,6 +785,7 @@ public class Hood extends Command {
         cfgBelt.MotorOutput.NeutralMode = NeutralModeValue.Coast;
         cfgBelt.CurrentLimits.SupplyCurrentLimit = 80;
         cfgBelt.CurrentLimits.SupplyCurrentLimitEnable = false;
+        cfgBelt.CurrentLimits.SupplyCurrentLimit = 40;
         cfgBelt.Feedback.SensorToMechanismRatio = 1.0;
         cfgBelt.MotorOutput.PeakForwardDutyCycle = 1;
         cfgBelt.MotorOutput.PeakReverseDutyCycle = -1;
@@ -849,5 +832,9 @@ public class Hood extends Command {
     */
     static public void stopBelt(){
         mBelt.stopMotor();
+    }
+
+    static public double getBeltCurrent(){
+        return mBelt.getSupplyCurrent().getValueAsDouble();
     }
 }

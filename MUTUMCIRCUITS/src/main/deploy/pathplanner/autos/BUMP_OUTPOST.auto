@@ -19,12 +19,6 @@
         {
           "type": "named",
           "data": {
-            "name": "HOOD_AIN"
-          }
-        },
-        {
-          "type": "named",
-          "data": {
             "name": "HOOD_SHOOT"
           }
         },
@@ -32,12 +26,6 @@
           "type": "path",
           "data": {
             "pathName": "BO0.1"
-          }
-        },
-        {
-          "type": "named",
-          "data": {
-            "name": "HOOD_AIN"
           }
         },
         {

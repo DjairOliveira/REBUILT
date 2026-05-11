@@ -210,6 +210,12 @@
       "waypointRelativePos": 5.257558790593509,
       "endWaypointRelativePos": null,
       "command": null
+    },
+    {
+      "name": "CLIMBER_DOWN",
+      "waypointRelativePos": 5.273464658169197,
+      "endWaypointRelativePos": null,
+      "command": null
     }
   ],
   "globalConstraints": {

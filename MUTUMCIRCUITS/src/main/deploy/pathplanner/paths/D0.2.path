@@ -8,8 +8,8 @@
       },
       "prevControl": null,
       "nextControl": {
-        "x": 2.6980025416130435,
-        "y": 6.79972931992168
+        "x": 2.9263338088445074,
+        "y": 7.120870185449359
       },
       "isLocked": false,
       "linkedName": "D0.1EE"
@@ -20,12 +20,12 @@
         "y": 7.446923228192908
       },
       "prevControl": {
-        "x": 3.738090643474774,
-        "y": 7.437433034106088
+        "x": 3.392125534950071,
+        "y": 7.4572753209700435
       },
       "nextControl": {
-        "x": 7.968552018470422,
-        "y": 7.4816153983358085
+        "x": 7.968620102470634,
+        "y": 7.419514789081688
       },
       "isLocked": false,
       "linkedName": null
@@ -48,28 +48,28 @@
     },
     {
       "anchor": {
-        "x": 5.988472092107438,
-        "y": 3.7019910757511294
+        "x": 6.186875891583452,
+        "y": 3.7180028530670475
       },
       "prevControl": {
-        "x": 6.296598948513701,
-        "y": 3.1206196485695035
+        "x": 6.495002747989715,
+        "y": 3.1366314258854215
       },
       "nextControl": {
-        "x": 5.780857966711658,
-        "y": 4.093715840648825
+        "x": 5.979261766187673,
+        "y": 4.109727617964743
       },
       "isLocked": false,
       "linkedName": null
     },
     {
       "anchor": {
-        "x": 5.763147011032262,
-        "y": 5.474140239405706
+        "x": 5.866037917069413,
+        "y": 5.391149818461369
       },
       "prevControl": {
-        "x": 6.110560091815579,
-        "y": 5.03914535826887
+        "x": 6.213450997852729,
+        "y": 4.956154937324533
       },
       "nextControl": null,
       "isLocked": false,
@@ -131,20 +131,14 @@
       "command": null
     },
     {
-      "name": "",
-      "waypointRelativePos": 0,
-      "endWaypointRelativePos": null,
-      "command": null
-    },
-    {
-      "name": "",
-      "waypointRelativePos": 0.0,
-      "endWaypointRelativePos": null,
-      "command": null
-    },
-    {
       "name": "INTAKE_ON",
       "waypointRelativePos": 1.2026875699887993,
+      "endWaypointRelativePos": null,
+      "command": null
+    },
+    {
+      "name": "CLIMBER_DOWN",
+      "waypointRelativePos": 4.0,
       "endWaypointRelativePos": null,
       "command": null
     }
@@ -165,7 +159,7 @@
   "folder": "DEPOT",
   "idealStartingState": {
     "velocity": 0,
-    "rotation": -50.036044295238874
+    "rotation": -52.22483568467812
   },
   "useDefaultConstraints": false
 }

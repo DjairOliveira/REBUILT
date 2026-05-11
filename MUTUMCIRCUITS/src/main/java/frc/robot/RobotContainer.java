@@ -60,6 +60,8 @@ public class RobotContainer {
     public double elapsedTime = 0;
 
     private double netProtection = 19;
+    boolean intakeViado = false;
+        
     
     public RobotContainer() {
 
@@ -67,13 +69,18 @@ public class RobotContainer {
 
         NamedCommands.registerCommand("HOOD_SHOOT", Commands.sequence(
                 Commands.runOnce(() -> HoodOK = true),
-                // Commands.waitUntil(() -> Hood.getAligned() && Hood.getIndexando()),
-                Commands.waitSeconds(4),
+                Commands.runOnce(() -> Hood.setAlingAuto(true)),
+                Commands.waitSeconds(3),
+                Commands.runOnce(() -> Hood.setAlingAuto(false)),
                 Commands.runOnce(() -> HoodOK = false),
                 Commands.runOnce(() -> mHood.end())));
+                
+        NamedCommands.registerCommand("WAIT1",
+            Commands.defer(
+                () -> Commands.waitSeconds(timerValue),
+                java.util.Set.of()
+            ));
 
-        NamedCommands.registerCommand("WAIT1", Commands.waitSeconds(timerValue));
-        
         /* ALTERADO */
         NamedCommands.registerCommand("HOOD_AIN", Commands.defer(() -> {
                 boolean red = DriverStation.getAlliance().orElse(DriverStation.Alliance.Blue) == DriverStation.Alliance.Red;
@@ -83,10 +90,11 @@ public class RobotContainer {
              java.util.Set.of(drivetrain))
         );
 
-        new EventTrigger("SET_SHOTTER").onTrue(Commands.runOnce(() -> mHood.setShooterRPM(3000)));
+
+        new EventTrigger("SET_SHOTTER").onTrue(Commands.runOnce(() -> mHood.setShooterRPM(3200)));
         new EventTrigger("INTAKE_ON").onTrue(Commands.runOnce(() -> intakectn=1));
         new EventTrigger("INTAKE_OFF").onTrue(Commands.runOnce(() -> Intake.setArticulated(0.025, 0, 0.4)));
-        new EventTrigger("CLIMBER_UP").onTrue(setClimber(110));
+        new EventTrigger("CLIMBER_UP").onTrue(setClimber(98));
         new EventTrigger("CLIMBER_DOWN").onTrue(setClimber(0));
         new EventTrigger("CLIMBER_PUSH").onTrue(setClimber(15));
 
@@ -116,18 +124,24 @@ public class RobotContainer {
         /* SWERVE DRIVE - END */
 
         /* INTAKE - BEGIN */
+        // Cmdriver.a().onTrue(Commands.runOnce(() -> mIntake.setIntakeRPM(2500)));
         activateCommandOnCondition(() -> driver.getLeftBumperButton(), new InstantCommand(() -> intakectn++));
         activateCommandOnCondition(()-> intakectn == 1, intakePreOn());
         
-        activateCommandOnCondition(() -> intakectn == 1 && Intake.getArticulatedPosition() > netProtection, intakeOn(6000));
+        activateCommandOnCondition(() -> intakectn == 1 && Intake.getArticulatedPosition() > netProtection, intakeOn(5000));
         activateCommandOnCondition(() -> intakectn >= 2, intakeOff());
 
         activateCommandOnCondition(()-> driver.getAButton() && Intake.getArticulatedPosition() > netProtection , dispenserOn());
         Cmdriver.a().onFalse(dispenserOff());
+
+        activateCommandOnCondition(()-> (Math.abs(Intake.getIntakeVelocity()[0] * 60) <= 200 || Math.abs(Intake.getIntakeVelocity()[1] * 60) <= 200) && intakectn == 1, new SequentialCommandGroup(
+            Commands.waitSeconds(2),
+            Commands.runOnce(() -> intakectn = 2)
+            .onlyIf(() -> (Math.abs(Intake.getIntakeVelocity()[0] * 60) <= 200 || Math.abs(Intake.getIntakeVelocity()[1] * 60) <= 200) && intakectn == 1)));
         /* INTAKE - END */
 
         /* ASSISTANCE INDEXER - BEGIN */
-        activateCommandOnCondition(()-> Hood.getIndexando() && driver.getRightBumperButton() && driver.getXButton(), Commands.runOnce(() -> Intake.setArticulated(0.015, 0, 0.1)));
+        activateCommandOnCondition(()-> Hood.getIndexando() && driver.getRightBumperButton() && driver.getXButton(), Commands.runOnce(() -> Intake.setArticulated(0.015, 0, 0.2))); // 01/05/26 08:48 - speed = 0.1
         activateCommandOnCondition(()-> Hood.getIndexando() && driver.getRightBumperButton() && driver.getXButton() && Intake.getArticulatedPosition() > netProtection, Commands.runOnce(() -> mIntake.setIntakeRPM(2500)));
         activateCommandOnCondition(()-> Hood.getIndexando() && driver.getRightBumperButton() && driver.getXButton() && Intake.getArticulatedPosition() <= netProtection, Commands.runOnce(() -> mIntake.setIntakeRPM(0)));
 
@@ -143,7 +157,7 @@ public class RobotContainer {
         /* HOOD - END */
 
         /* CLIMBER - BEGIN */
-        Cmdriver.povUp().onTrue(setClimber(110));
+        Cmdriver.povUp().onTrue(setClimber(98));
         activateCommandOnCondition(()-> driver.getPOV() == 180 && !getTowerZone(), setClimber(0));
         activateCommandOnCondition(()-> driver.getPOV() == 180 && getTowerZone(), setClimber(15));
         
@@ -197,6 +211,10 @@ public class RobotContainer {
         }, java.util.Set.of(drivetrain));
     }
 
+    public boolean getIntake(){
+        return intakeViado;
+    }
+
     /**
      * Move o climber para a posição desejada.
      * @param position Seta a posição desejada do climber.
@@ -214,7 +232,7 @@ public class RobotContainer {
     Command auxIndexerAuto(double waitTimer){
         return new SequentialCommandGroup(
             Commands.waitSeconds(waitTimer),
-            Commands.runOnce(() -> Intake.setArticulated(0.005, 0, 0.35)),   //0.2
+            Commands.runOnce(() -> Intake.setArticulated(0.01, 0, 0.4)),   //0.2
             Commands.runOnce(() -> mIntake.setIntakeRPM(2500)));
     }
 
@@ -239,7 +257,7 @@ public class RobotContainer {
     Command intakePreOn(){
         return new SequentialCommandGroup(
             Commands.runOnce(() -> Intake.setArticulated(0.1, 22.394, 0.5)),
-            setClimber(110));
+            setClimber(98));
     }
 
     Command intakeOn(double RPM){
@@ -280,17 +298,6 @@ public class RobotContainer {
             Commands.runOnce(() -> mHood.setBeltRPM(0)),
             Commands.runOnce(() -> mHood.setIndexRPM(0)));
     }
-
-    /**
-     * Ajuda a indexar as fuls com o intake.
-     * @param null
-     * @return sequencia de comandos necessarios para executar a ação.
-     */
-    // Command indexerIntakePreOn(){
-    //     return new SequentialCommandGroup(
-    //         Commands.runOnce(() -> Intake.setArticulated(0.015, 0, 0.1)),
-    //         Commands.runOnce(() -> mIntake.setIntakeRPM(2500)));
-    // }
 
     /**
      * Desliga o sistema de auxilio de fuls com intake.

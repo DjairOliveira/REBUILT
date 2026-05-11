@@ -13,12 +13,6 @@
         {
           "type": "named",
           "data": {
-            "name": "HOOD_AIN"
-          }
-        },
-        {
-          "type": "named",
-          "data": {
             "name": "HOOD_SHOOT"
           }
         },

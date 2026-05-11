@@ -24,6 +24,8 @@ import edu.wpi.first.wpilibj.DriverStation.Alliance;
 import edu.wpi.first.wpilibj.Notifier;
 import edu.wpi.first.wpilibj.RobotController;
 import edu.wpi.first.wpilibj.XboxController;
+import edu.wpi.first.wpilibj.smartdashboard.Field2d;
+import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.Subsystem;
 import com.ctre.phoenix6.swerve.SwerveModule;
@@ -34,8 +36,8 @@ import com.pathplanner.lib.config.PIDConstants;
 import com.pathplanner.lib.controllers.PPHolonomicDriveController;
 
 import frc.robot.LimelightHelpers;
-import frc.robot.Robot;
 import frc.robot.generated.TunerConstants.TunerSwerveDrivetrain;
+import frc.robot.Robot;
 
 public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Subsystem {
 
@@ -59,6 +61,8 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
     private static final double kSimLoopPeriod = 0.004; // 4 ms
     private Notifier m_simNotifier = null;
     private double m_lastSimTime;
+
+    public Field2d field = new Field2d();
 
     private final SwerveRequest.ApplyRobotSpeeds autoRequest = new SwerveRequest.ApplyRobotSpeeds();
 
@@ -118,9 +122,8 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             fixedAngle = isRedAlliance() ? 0 : 180;
 
             headingPID.enableContinuousInput(-180, 180);
-            headingPID.setTolerance(1.5);
+            headingPID.setTolerance(2);
 
-            // /* ALTERADO */
             // if(!Robot.isAuto){
             //     if(!isRedAlliance()) this.resetPose(new Pose2d(2, 4, new Rotation2d(Math.PI)));
             //     else this.resetPose(new Pose2d(13.5, 4, new Rotation2d(0)));
@@ -137,16 +140,19 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
 
         if (megaTagUpdateOdometry(mt2Front, 4, 30, omega)) {
             double xyStdDev = mt2Front.tagCount > 2 ? 0.1 : 0.1 + (mt2Front.avgTagDist * 0.2);
-            Pose2d visionPose = new Pose2d(mt2Front.pose.getTranslation(), new Rotation2d(Math.toRadians(YawWrapping)));
+            // Pose2d visionPose = new Pose2d(mt2Front.pose.getTranslation(), new Rotation2d(Math.toRadians(YawWrapping)));
+            Pose2d visionPose = new Pose2d(mt2Front.pose.getTranslation(), new Rotation2d(mt2Front.pose.getRotation().getRadians()));
 
             addVisionMeasurement(visionPose, mt2Front.timestampSeconds, edu.wpi.first.math.VecBuilder.fill(xyStdDev, xyStdDev, 999999.0));
-            updateLimelightAngle(frontCAM, YawWrapping);
+            // updateLimelightAngle(frontCAM, YawWrapping);
             Logger.recordOutput("VISION/Front", mt2Front.pose);
         }
 
         Logger.recordOutput("VISION/HEADING", getHeading());
 
-        if (megaTagUpdateOdometry(mt2Left, 4, 30, omega)) {
+        boolean inZoneAlliance = (isRedAlliance() && (getPose().getX() >= 12.41)) || (!isRedAlliance() && (getPose().getX() <= 4.3));
+
+        if (megaTagUpdateOdometry(mt2Left, 4, 30, omega) && !m_Control.getRightBumperButton() && inZoneAlliance) {
             double xyStdDev = mt2Left.tagCount > 2 ? 0.1 : 0.1 + (mt2Left.avgTagDist * 0.2);
             Pose2d visionPose = new Pose2d(mt2Left.pose.getTranslation(), new Rotation2d(Math.toRadians(YawWrapping)));
 
@@ -155,7 +161,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             Logger.recordOutput("VISION/Left", mt2Left.pose);
         }
 
-        if (megaTagUpdateOdometry(mt2Right, 4, 30, omega)) {
+        if (megaTagUpdateOdometry(mt2Right, 4, 30, omega) && !m_Control.getRightBumperButton() && inZoneAlliance) {
             double xyStdDev = mt2Right.tagCount > 2 ? 0.1 : 0.1 + (mt2Right.avgTagDist * 0.2);
             Pose2d visionPose = new Pose2d(mt2Right.pose.getTranslation(), new Rotation2d(Math.toRadians(YawWrapping)));
 
@@ -219,7 +225,13 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         }
         else if(Math.abs(m_Control.getRightX()) < 0.1){
             if(m_Control.getRightBumperButton()){
-                OmegaCmd = Hood.getOmega();
+                boolean mode = false;
+
+                OmegaCmd = Robot.MIRAR.getDouble(0) == 1 ? Hood.getOmega() : -m_Control.getRightX();
+                mode = Robot.MIRAR.getDouble(0) == 1 ? false : true;
+
+                Hood.setAlingAuto(mode);
+
                 fixedAngle = YawWrapping;
             }
             else{
@@ -254,7 +266,10 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         Logger.recordOutput("VISION/mt2Front", mt2Front != null ? mt2Front.pose.getX() : 0.0);
         Logger.recordOutput("VISION/mt2Left", mt2Left != null ? mt2Left.pose.getX() : 0.0);
         Logger.recordOutput("VISION/mt2Right", mt2Right != null ? mt2Right.pose.getX() : 0.0);
-        // Logger.recordOutput("AUTO/OmegaFinal", shotOk ? Hood.getOmega() * MaxAngularRate : getState().Speeds.omegaRadiansPerSecond);
+
+        Pose2d robot = new Pose2d(getPose().getX(), getPose().getY(), new Rotation2d(getPose().getRotation().getRadians()));
+        SmartDashboard.putData("FIELD", field);
+        field.getObject("Robot").setPose(robot);
     }
 
     public boolean isValid(LimelightHelpers.PoseEstimate est) {
@@ -331,10 +346,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             OmegaCmd = headingPID.calculate(heading.getDegrees(), targetAngleHood.getDegrees());
             OmegaCmd = MathUtil.clamp(OmegaCmd, -0.7, 0.7);
 
-            if(Math.abs(headingPID.getError()) < 6) {
-                OmegaCmd = 0;
-                // headingPID.setTolerance
-            }
+            if(Math.abs(headingPID.getError()) < 6) {OmegaCmd = 0;}
 
             fixedAngle = heading.getDegrees(); /* ALTERADO */
 
@@ -345,8 +357,6 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
         }).until(() -> {
             Pose2d pose = getPose();
             Rotation2d heading = pose.getRotation();
-            Translation2d offsetHood = new Translation2d(0.19719, 0);
-            Translation2d poseHood = pose.getTranslation().plus(offsetHood.rotateBy(heading));
 
             Rotation2d desiredAngle =
                 new Translation2d(targetX, targetY)
@@ -356,7 +366,7 @@ public class CommandSwerveDrivetrain extends TunerSwerveDrivetrain implements Su
             double error = MathUtil.angleModulus(desiredAngle.minus(heading).getRadians());
             
             alinhoAuto = Math.abs(error) < 6 ? true : false;
-            Hood.getAlingAuto(alinhoAuto);
+            Hood.setAlingAuto(alinhoAuto);
 
             if(Math.abs(error) < 6) OmegaCmd = 0;
             fixedAngle = heading.getDegrees(); /* ALTERADO */
